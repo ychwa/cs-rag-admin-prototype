@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CS 지식 관리 — 프로토타입</title>
+<style>
+  :root{
+    --brand:#8a46ff; --brand-weak:#f3ecff; --brand-line:#d6bdff;
+    --ink:#212121; --ink-2:#424242; --ink-3:#8e8e8e; --line:#e7e7ec; --line-2:#eef0f3;
+    --bg:#f5f6f8; --card:#fff;
+    --ok:#0f9d6e; --ok-bg:#e7f6ef; --run:#2563eb; --run-bg:#e8efff;
+    --wait:#7a8194; --wait-bg:#eff1f4; --err:#dc2b3d; --err-bg:#fdeaec;
+    --soon:#7c3aed; --soon-bg:#f3ecff;
+    --shadow:0 1px 2px rgba(20,25,45,.04),0 8px 24px rgba(20,25,45,.06);
+    font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer}
+  svg{display:block}
+
+  .btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:7px;transition:.12s}
+  .btn:hover{background:#fafafb;border-color:#d6d8de}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.primary:hover{filter:brightness(1.07)}
+  .btn.danger{color:var(--err)}
+  .btn[disabled]{opacity:.45;cursor:not-allowed}
+
+  .wrap{padding:36px 32px;max-width:1000px;width:100%;margin:0 auto}
+  .ph{margin-bottom:20px}
+  .ph h1{font-size:22px;font-weight:700;letter-spacing:-.01em}
+  .ph .sub{color:var(--ink-3);font-size:13px;margin-top:6px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+
+  /* 카드 내부 탭 헤더 (탭=타이틀) + 우측: 검색·추가 */
+  .ctabs{display:flex;align-items:center;gap:2px;border-bottom:1px solid var(--line);padding:8px 16px}
+  .tab{position:relative;padding:12px 14px 13px;font-size:14.5px;font-weight:700;color:var(--ink-3);background:none;border:none}
+  .tab.on{color:var(--brand)}
+  .tab.on::after{content:"";position:absolute;left:14px;right:14px;bottom:-9px;height:2px;background:var(--brand);border-radius:2px}
+  .tb-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+  .cap{font-size:12.5px;color:var(--ink-3);font-weight:600;white-space:nowrap}
+  .search-wrap{position:relative;display:inline-flex;align-items:center}
+  .search-wrap .si{position:absolute;left:11px;color:var(--ink-3);pointer-events:none}
+  .search{border:1px solid var(--line);border-radius:8px;padding:8px 12px 8px 33px;font-family:inherit;font-size:13px;color:var(--ink);width:220px}
+  .search:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-weak)}
+
+  /* 컬럼 헤더 필터 (라벨 옆 ⋮) */
+  .th-filter{position:relative;display:inline-flex;align-items:center;gap:2px}
+  .hf{border:none;background:none;color:var(--ink-3);font-size:14px;line-height:1;padding:2px 5px;border-radius:6px}
+  .hf:hover{background:#eef0f3;color:var(--ink)}
+  .hf.active{color:var(--brand)}
+  .hfpop{position:absolute;top:calc(100% + 8px);left:0;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(20,25,45,.16);padding:5px;min-width:150px;z-index:65;display:none}
+  .hfpop.open{display:block}
+  .hfpop button{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;border:none;background:none;padding:9px 11px;font-size:13px;color:var(--ink);border-radius:7px;font-weight:500;letter-spacing:0}
+  .hfpop button:hover{background:#f5f6f8}
+  .hfpop button.sel{color:var(--brand);font-weight:700}
+  .hfpop button.sel::after{content:"✓";font-size:12px}
+
+  /* 페이지네이션 */
+  .pager{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:10px 16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-2)}
+  .pg-grp{display:inline-flex;align-items:center;gap:18px}
+  .pager .pg-rpp{display:inline-flex;align-items:center;gap:7px}
+  .pager select{font-family:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:4px 6px;color:var(--ink);background:#fff}
+  .pager .pg-nav{display:inline-flex;align-items:center;gap:2px}
+  .pager .pg-nav button{border:none;background:none;color:var(--ink-2);font-size:14px;line-height:1;padding:5px 7px;border-radius:6px}
+  .pager .pg-nav button:hover:not([disabled]){background:#eef0f3;color:var(--ink)}
+  .pager .pg-nav button[disabled]{color:#c8ccd4;cursor:not-allowed}
+
+  /* file icon chip */
+  .fi{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:10.5px;font-weight:700;color:#fff;flex-shrink:0}
+  .fi.pdf{background:#e0463c}.fi.txt{background:#5b6472}.fi.xls{background:#1f8a52}.fi.md{background:#3a64d8}
+
+  /* table */
+  table{width:100%;border-collapse:collapse;table-layout:fixed}
+  th{font-size:11.5px;color:var(--ink-3);text-align:left;font-weight:600;padding:13px 16px;border-bottom:1px solid var(--line);letter-spacing:.02em}
+  td{padding:15px 16px;border-bottom:1px solid var(--line-2);font-size:13.5px;vertical-align:middle;overflow:hidden}
+  tbody tr{cursor:pointer;transition:.1s}
+  tbody tr:hover{background:#fafafb}
+  tr:last-child td{border-bottom:none}
+  .c-act{width:48px}
+  #ftbody td:last-child,#utbody td:last-child{overflow:visible}
+  .fname{display:flex;align-items:center;gap:11px;font-weight:600;min-width:0}
+  .fname .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .muted{color:var(--ink-3);font-size:12.5px}
+  .ttl-cell .t1{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ttl-cell .t2{font-size:12px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ttl-cell .t2.url{color:var(--brand)}
+  .pvname{cursor:pointer}
+  .pvname:hover{text-decoration:underline;color:var(--brand)}
+  .row-actions{display:flex;gap:4px;justify-content:flex-end;align-items:center}
+  .th-sort{cursor:pointer;display:inline-flex;align-items:center;gap:3px;user-select:none}
+  .th-sort:hover{color:var(--ink-2)}
+  .sort-ar{font-size:11px;color:var(--brand);font-weight:700}
+
+  /* status badge */
+  .st{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;line-height:1;border-radius:20px;padding:5px 11px;white-space:nowrap}
+  .st .d{width:6px;height:6px;border-radius:50%}
+  .st.ok{color:var(--ok);background:var(--ok-bg)}.st.ok .d{background:var(--ok)}
+  .st.run{color:var(--run);background:var(--run-bg)}.st.run .d{background:var(--run);animation:pulse 1s infinite}
+  .st.off{color:var(--wait);background:var(--wait-bg)}.st.off .d{background:var(--wait)}
+  .st.wait{color:var(--wait);background:var(--wait-bg)}.st.wait .d{background:var(--wait)}
+  .st.err{color:var(--err);background:var(--err-bg)}.st.err .d{background:var(--err)}
+  .st.soon{color:var(--soon);background:var(--soon-bg)}.st.soon .d{background:var(--soon)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* 모드 배지 */
+  .mode{display:inline-flex;align-items:center;font-size:11.5px;font-weight:600;border-radius:7px;padding:4px 9px;white-space:nowrap}
+  .mode.link{color:var(--ink-2);background:#eef0f3}
+  .mode.content{color:var(--brand);background:var(--brand-weak)}
+
+  /* 미트볼(⋮) 메뉴 */
+  .menu{position:relative;display:inline-flex}
+  .mb{border:1px solid transparent;background:none;border-radius:8px;padding:4px 8px;font-size:17px;color:var(--ink-3);line-height:1}
+  .mb:hover{background:#eef0f3;color:var(--ink)}
+  .menu-pop{position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(20,25,45,.16);padding:5px;min-width:132px;z-index:65;display:none}
+  .menu.open .menu-pop{display:block}
+  .menu-pop button{display:block;width:100%;text-align:left;border:none;background:none;padding:9px 11px;font-size:13px;color:var(--ink);border-radius:7px}
+  .menu-pop button:hover{background:#f5f6f8}
+  .menu-pop button.danger{color:var(--err)}
+
+  /* 토글 스위치 */
+  .switch{position:relative;display:inline-flex;align-items:center;cursor:pointer;height:22px}
+  .switch input{display:none}
+  .switch .sl{width:38px;height:22px;background:#cfd3dc;border-radius:20px;position:relative;transition:.15s;display:block}
+  .switch .sl::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.15s}
+  .switch input:checked + .sl{background:var(--brand)}
+  .switch input:checked + .sl::after{transform:translateX(16px)}
+
+  /* tooltip */
+  .tip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;font-size:10px;color:var(--ink-3);border:1px solid var(--line);margin-left:5px;cursor:help;vertical-align:middle}
+  .tip .tipbox{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#13151d;color:#fff;padding:9px 12px;border-radius:8px;font-size:11.5px;font-weight:500;line-height:1.55;width:max-content;max-width:240px;white-space:normal;text-align:left;letter-spacing:0;box-shadow:0 6px 22px rgba(0,0,0,.28);opacity:0;visibility:hidden;transition:opacity .12s;z-index:80;pointer-events:none}
+  .tip .tipbox::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#13151d}
+  .tip:hover .tipbox{opacity:1;visibility:visible}
+  .tip.tip-r .tipbox{left:auto;right:-4px;transform:none}
+  .tip.tip-r .tipbox::after{left:auto;right:8px;transform:none}
+  .tip.tip-l .tipbox{left:-6px;right:auto;transform:none}
+  .tip.tip-l .tipbox::after{left:11px;right:auto;transform:none}
+
+  /* 빈 상태 */
+  .empty{text-align:center;padding:54px 20px}
+  .empty .eic{color:var(--brand);margin:0 auto 14px;width:42px;height:42px;display:grid;place-items:center;background:var(--brand-weak);border-radius:12px}
+  .empty .et{font-size:14.5px;font-weight:600;color:var(--ink)}
+  .empty .ed{font-size:13px;color:var(--ink-3);margin-top:6px;line-height:1.5}
+  .empty .btn{margin-top:16px}
+  .empty.small{padding:40px 20px;color:var(--ink-3);font-size:13px}
+
+  /* 드로어 (우측 패널 · 딤 없음) */
+  .dov{position:fixed;inset:0;background:transparent;display:none;z-index:50}
+  .dov.show{display:block}
+  .drawer{position:absolute;top:0;right:0;height:100%;width:480px;max-width:92vw;background:#fff;display:flex;flex-direction:column;box-shadow:-14px 0 50px rgba(20,25,45,.18);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .24s ease}
+  .dov.show .drawer{transform:translateX(0)}
+  .dr-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 24px;border-bottom:1px solid var(--line);flex-shrink:0}
+  .dr-h h4{font-size:16px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:9px;min-width:0}
+  .dr-x{border:none;background:none;font-size:22px;color:var(--ink-3);line-height:1;flex-shrink:0}
+  .dr-x:hover{color:var(--ink)}
+  .dr-body{padding:24px;overflow:auto;flex:1}
+  .dr-foot{padding:16px 24px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0}
+  .dr-note{margin-top:18px;font-size:12px;color:var(--ink-2);background:#fafafb;border:1px solid var(--line);border-radius:8px;padding:12px 14px;line-height:1.6}
+  .dr-note b{color:var(--ink)}
+
+  /* dropzone */
+  .drop{border:1.5px dashed var(--brand-line);background:var(--brand-weak);border-radius:10px;padding:30px 18px;text-align:center;transition:.15s;cursor:pointer}
+  .drop:hover,.drop.hot{background:#ece1ff;border-color:var(--brand)}
+  .drop .ic{margin:0 auto;width:34px;height:34px;color:var(--brand)}
+  .drop .t{font-weight:700;margin-top:10px;font-size:14px;color:var(--brand)}
+  .staged{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:9px;padding:11px 13px;margin-top:12px}
+  .staged.dup{border-color:var(--brand-line);background:var(--brand-weak)}
+  .staged .nm{flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .staged .nm .sx{font-size:11.5px;color:var(--ink-3);font-weight:400}
+  .dupchip{font-size:11px;font-weight:700;color:var(--brand);background:#fff;border:1px solid var(--brand-line);border-radius:6px;padding:3px 7px;white-space:nowrap}
+  .guide-h{margin-top:22px;font-weight:700;font-size:12.5px;color:var(--ink);margin-bottom:9px}
+  .guide-ol{margin:0;padding-left:18px;font-size:12px;color:var(--ink-2)}
+  .guide-ol li{margin-bottom:6px;line-height:1.55}
+  .guide-ol li b{color:var(--ink)}
+
+  /* form fields */
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px}
+  .field input,.field textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-family:inherit;font-size:13.5px;color:var(--ink)}
+  .field input:focus,.field textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-weak)}
+  .field textarea{resize:vertical;min-height:74px}
+  .field .help{font-size:11.5px;color:var(--err);margin-top:5px;display:none}
+  .field .help.bad{display:block}
+  .req{color:var(--err);font-weight:700}
+  .daterow{display:flex;gap:8px;align-items:center}
+  .daterow input{flex:1}
+  .daterow input:disabled{background:#f3f4f6;color:#9aa0ab;cursor:not-allowed}
+  .ck-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .ck-label{font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;color:var(--ink)}
+  .ck-ctl{display:flex;align-items:center;gap:10px}
+  .termhint{font-size:11.5px;color:var(--ink-3);margin-top:7px;line-height:1.5}
+  .field label.lbl-row{display:flex;justify-content:space-between;align-items:baseline}
+  .field label.switch{display:inline-flex;margin:0;font-weight:400}
+  .cc{font-size:11px;color:var(--ink-3);font-weight:500}
+
+  /* 등록 유형 선택 (세그먼트) */
+  .seg{display:flex;gap:8px}
+  .seg .opt{flex:1;border:1px solid var(--line);border-radius:10px;padding:12px 13px;cursor:pointer;transition:.12s;background:#fff}
+  .seg .opt:hover{border-color:#d6d8de}
+  .seg .opt.on{border-color:var(--brand);background:var(--brand-weak)}
+  .seg .opt .ot{font-size:13px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:7px}
+  .seg .opt.on .ot{color:var(--brand)}
+  .seg .opt .od{font-size:11px;color:var(--ink-3);margin-top:5px;line-height:1.45}
+  .seg .opt .rd{width:14px;height:14px;border-radius:50%;border:2px solid #cfd3dc;flex-shrink:0;position:relative}
+  .seg .opt.on .rd{border-color:var(--brand)}
+  .seg .opt.on .rd::after{content:"";position:absolute;inset:2px;border-radius:50%;background:var(--brand)}
+
+  .guide{background:var(--brand-weak);border:1px solid var(--brand-line);border-radius:9px;padding:12px 14px;font-size:12px;color:var(--ink-2);margin-bottom:18px;line-height:1.6}
+  .guide b{color:var(--ink)}
+
+  /* 상세 드로어 */
+  .dt-list>div{display:flex;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid var(--line-2);font-size:13.5px}
+  .dt-list dt{color:var(--ink-3);font-weight:600;flex-shrink:0}
+  .dt-list dd{color:var(--ink);text-align:right;min-width:0;word-break:break-all}
+  .dt-list dd a{color:var(--brand)}
+  .dt-statctl{display:inline-flex;align-items:center;gap:9px;justify-content:flex-end}
+  .dt-err{margin-top:16px;font-size:12.5px;color:var(--err);background:var(--err-bg);border-radius:8px;padding:11px 13px;line-height:1.5}
+
+  /* 확인 모달 (딤 유지) */
+  .ov{position:fixed;inset:0;background:rgba(20,22,32,.45);display:none;align-items:center;justify-content:center;z-index:55;padding:20px}
+  .ov.show{display:flex}
+  .modal{background:#fff;border-radius:14px;max-width:430px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  .modal h4{font-size:16px;margin-bottom:9px}
+  .modal p{font-size:13px;color:var(--ink-2);margin-bottom:18px;line-height:1.55}
+  .modal .acts{display:flex;gap:8px;justify-content:flex-end}
+
+  /* 텍스트 미리보기 모달 */
+  .modal.pv{max-width:640px;width:100%;padding:0;display:flex;flex-direction:column;max-height:80vh}
+  .pv .pv-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px 14px;border-bottom:1px solid var(--line)}
+  .pv .pv-h h4{font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pv .pv-sub{padding:10px 20px 0;font-size:12px;color:var(--brand);word-break:break-all}
+  .pv .pv-body{margin:12px 20px;padding:14px 16px;background:#f7f8fa;border:1px solid var(--line);border-radius:8px;font-size:12.5px;line-height:1.7;color:var(--ink-2);white-space:pre-wrap;word-break:break-word;overflow:auto;flex:1;min-height:160px}
+  .pv .pv-foot{padding:12px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end}
+
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);background:#13151d;color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;opacity:0;transition:.25s;z-index:60;box-shadow:0 8px 30px rgba(0,0,0,.3);max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="ph">
+    <h1>CS 지식 관리</h1>
+  </div>
+
+  <div class="card">
+    <div class="ctabs">
+      <button class="tab on" data-tab="files" onclick="switchTab('files')">문서</button>
+      <button class="tab" data-tab="urls" onclick="switchTab('urls')">웹페이지</button>
+      <div class="tb-right">
+        <div class="search-wrap">
+          <svg class="si" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input class="search" id="fsearch" placeholder="이름 검색" oninput="onSearch()" />
+        </div>
+        <button class="btn primary add" id="addbtn" onclick="addAction()">＋ 파일 업로드</button>
+      </div>
+    </div>
+
+    <!-- 문서 -->
+    <section id="tab-files">
+      <table>
+        <colgroup><col><col style="width:128px"><col style="width:84px"><col style="width:90px"><col style="width:150px"><col class="c-act"></colgroup>
+        <thead><tr><th>이름</th>
+          <th><span class="th-filter">상태 <button class="hf" id="fHF" onclick="toggleHF(event,this)">⋮</button>
+            <div class="hfpop" id="fHFpop">
+              <button class="sel" data-v="all" onclick="setFilter('all')">전체</button>
+              <button data-v="ok" onclick="setFilter('ok')">답변 반영</button>
+              <button data-v="off" onclick="setFilter('off')">답변 제외</button>
+              <button data-v="run" onclick="setFilter('run')">처리 중</button>
+              <button data-v="err" onclick="setFilter('err')">실패</button>
+            </div></span></th>
+          <th><span class="th-filter">형식 <button class="hf" id="fmtHF" onclick="toggleHF(event,this)">⋮</button>
+            <div class="hfpop" id="fmtHFpop">
+              <button class="sel" data-v="all" onclick="setFmtFilter('all')">전체</button>
+              <button data-v="pdf" onclick="setFmtFilter('pdf')">PDF</button>
+              <button data-v="md" onclick="setFmtFilter('md')">Markdown</button>
+              <button data-v="xls" onclick="setFmtFilter('xls')">Excel</button>
+              <button data-v="txt" onclick="setFmtFilter('txt')">TXT</button>
+            </div></span></th>
+          <th>크기</th>
+          <th><span class="th-sort" onclick="toggleSort()">업로드 일시 <span class="sort-ar" id="fSortAr">↓</span></span></th>
+          <th></th></tr></thead>
+        <tbody id="ftbody"></tbody>
+      </table>
+      <div class="pager" id="fpager">
+        <span class="cap" id="fcap">23 / 300</span>
+        <span class="pg-grp">
+          <span class="pg-rpp">페이지당 행 수
+            <select id="rpp" onchange="setRpp(this.value)"><option>10</option><option>25</option><option>50</option></select>
+          </span>
+          <span class="pg-range" id="pgRange">1–10 of 23</span>
+          <span class="pg-nav">
+            <button id="pgFirst" onclick="goPage('first')" title="처음">⏮</button>
+            <button id="pgPrev" onclick="goPage('prev')" title="이전">‹</button>
+            <button id="pgNext" onclick="goPage('next')" title="다음">›</button>
+            <button id="pgLast" onclick="goPage('last')" title="마지막">⏭</button>
+          </span>
+        </span>
+      </div>
+    </section>
+
+    <!-- 웹페이지 -->
+    <section id="tab-urls" style="display:none">
+      <table>
+        <colgroup><col><col style="width:100px"><col style="width:112px"><col style="width:168px"><col style="width:128px"><col class="c-act"></colgroup>
+        <thead><tr><th>이름</th>
+          <th><span class="th-filter">유형 <button class="hf" id="mHF" onclick="toggleHF(event,this)">⋮</button>
+            <div class="hfpop" id="mHFpop">
+              <button class="sel" data-v="all" onclick="setModeFilter('all')">전체</button>
+              <button data-v="link" onclick="setModeFilter('link')">링크 안내</button>
+              <button data-v="content" onclick="setModeFilter('content')">내용 반영</button>
+            </div></span></th>
+          <th><span class="th-filter">상태 <button class="hf" id="uHF" onclick="toggleHF(event,this)">⋮</button>
+            <div class="hfpop" id="uHFpop">
+              <button class="sel" data-v="all" onclick="setUFilter('all')">전체</button>
+              <button data-v="on" onclick="setUFilter('on')">답변 반영</button>
+              <button data-v="soon" onclick="setUFilter('soon')">반영 예정</button>
+              <button data-v="run" onclick="setUFilter('run')">처리 중</button>
+              <button data-v="off" onclick="setUFilter('off')">답변 제외</button>
+              <button data-v="exp" onclick="setUFilter('exp')">기간 만료</button>
+              <button data-v="err" onclick="setUFilter('err')">실패</button>
+            </div></span></th>
+          <th>유효기간</th>
+          <th><span class="th-sort" onclick="toggleUSort()">등록 일시 <span class="sort-ar" id="uSortAr">↓</span></span></th>
+          <th></th></tr></thead>
+        <tbody id="utbody"></tbody>
+      </table>
+      <div class="pager" id="upager">
+        <span class="cap" id="ucap">6 / 50</span>
+        <span class="pg-grp">
+          <span class="pg-rpp">페이지당 행 수
+            <select id="urpp" onchange="setURpp(this.value)"><option>10</option><option>25</option><option>50</option></select>
+          </span>
+          <span class="pg-range" id="upgRange">1–6 of 6</span>
+          <span class="pg-nav">
+            <button id="upgFirst" onclick="goUPage('first')" title="처음">⏮</button>
+            <button id="upgPrev" onclick="goUPage('prev')" title="이전">‹</button>
+            <button id="upgNext" onclick="goUPage('next')" title="다음">›</button>
+            <button id="upgLast" onclick="goUPage('last')" title="마지막">⏭</button>
+          </span>
+        </span>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- 업로드 드로어 (문서) -->
+<div class="dov" id="upov">
+  <div class="drawer">
+    <div class="dr-h"><h4>파일 업로드</h4><button class="dr-x" onclick="closeUpload()">×</button></div>
+    <div class="dr-body">
+      <div class="drop" id="mdrop">
+        <div class="ic"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="M8 8l4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></div>
+        <div class="t">파일을 업로드하거나 드래그 앤 드롭해 주세요</div>
+      </div>
+      <div id="staged"></div>
+      <div class="guide-h">업로드 유의사항</div>
+      <ol class="guide-ol">
+        <li><b>파일 형식</b> — TXT, Markdown, PDF, HTML, DOCX, PPTX, XLSX, XLSM 형식만 업로드할 수 있습니다.</li>
+        <li><b>파일 용량</b> — 파일당 최대 50MB까지 업로드할 수 있습니다.</li>
+        <li><b>파일 개수</b> — 최대 300개까지 업로드할 수 있습니다.</li>
+        <li><b>교체 업로드</b> — 같은 파일명으로 올리면 기존 문서를 교체합니다(확인 후 진행).</li>
+        <li><b>표·스캔 문서</b> — 표·목록과 스캔(이미지) PDF도 인식해 답변에 활용합니다.</li>
+      </ol>
+      <div class="dr-note">ⓘ 업로드한 문서는 처리가 끝나면 답변에 반영됩니다. 반영 결과는 <b>헤더의 검색 미리보기</b>에서 확인할 수 있습니다.</div>
+    </div>
+    <div class="dr-foot">
+      <button class="btn" onclick="closeUpload()">취소</button>
+      <button class="btn primary" id="upconfirm" onclick="confirmUpload()" disabled>확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- 웹페이지 등록/수정 드로어 -->
+<div class="dov" id="urlov">
+  <div class="drawer">
+    <div class="dr-h"><h4 id="urldr-h4">웹페이지 등록</h4><button class="dr-x" onclick="closeUrl()">×</button></div>
+    <div class="dr-body">
+      <div class="field">
+        <label>등록 유형</label>
+        <div class="seg">
+          <div class="opt on" id="opt_link" onclick="setUrlMode('link')">
+            <div class="ot"><span class="rd"></span>링크 안내</div>
+            <div class="od">페이지 내용은 가져오지 않고, 관련 질문에 링크만 안내합니다.</div>
+          </div>
+          <div class="opt" id="opt_content" onclick="setUrlMode('content')">
+            <div class="ot"><span class="rd"></span>내용 반영</div>
+            <div class="od">페이지 내용을 가져와 답변에 직접 활용합니다.</div>
+          </div>
+        </div>
+      </div>
+      <div class="guide" id="u_guide"></div>
+
+      <div class="ck-row" id="u_bulkrow">
+        <span class="ck-label">여러 개 한 번에 등록 <span class="tip tip-l">ⓘ<span class="tipbox">여러 URL을 한 줄에 하나씩 붙여넣어 한꺼번에 등록합니다. 이름은 URL로 기본 설정되며, 등록 후 목록에서 이름·설명을 보완할 수 있습니다.</span></span></span>
+        <label class="switch"><input type="checkbox" id="u_bulkck" onchange="setBulk(this.checked)" /><span class="sl"></span></label>
+      </div>
+
+      <!-- 단일 등록 -->
+      <div id="u_single">
+        <div class="field">
+          <label><span id="lab_url">URL <span class="req">*</span></span></label>
+          <input id="u_url" autocomplete="off" placeholder="https://example.com/help/delivery" oninput="onUrlInput()" />
+          <div class="help" id="h_url"></div>
+        </div>
+        <div class="field">
+          <label class="lbl-row"><span id="lab_title">이름 <span class="req">*</span></span><span class="cc" id="cc_title">0 / 40</span></label>
+          <input id="u_title" autocomplete="off" placeholder="예: 배송비·배송 기간 안내" maxlength="40" oninput="onUrlInput()" />
+          <div class="help" id="h_title"></div>
+        </div>
+        <div class="field">
+          <label class="lbl-row"><span id="lab_desc">설명 <span class="req">*</span></span><span class="cc" id="cc_desc">0 / 200</span></label>
+          <textarea id="u_desc" autocomplete="off" placeholder="예: 국내·해외 배송비, 무료배송 조건(5만 원 이상), 평균 도착일·도서산간 추가비. “배송 얼마나 걸려요”, “배송비 얼마” 문의에 안내." maxlength="200" oninput="onUrlInput()"></textarea>
+          <div class="help" id="h_desc"></div>
+        </div>
+      </div>
+
+      <!-- 일괄 등록 -->
+      <div id="u_bulk_wrap" style="display:none">
+        <div class="field">
+          <label>URL <span class="req">*</span></label>
+          <textarea id="u_bulk" autocomplete="off" style="min-height:118px" placeholder="https://example.com/page-1&#10;https://example.com/page-2&#10;https://example.com/page-3" oninput="onUrlInput()"></textarea>
+          <div class="help" id="h_bulk"></div>
+          <div class="termhint">한 줄에 하나씩 입력합니다. 이름은 URL로 기본 설정되며, 등록 후 목록에서 이름·설명을 보완할 수 있습니다.</div>
+        </div>
+      </div>
+
+      <!-- 유효기간 (공통) -->
+      <div class="field">
+        <div class="ck-row">
+          <span class="ck-label">유효기간 설정 <span class="tip tip-l">ⓘ<span class="tipbox">이벤트·시즌처럼 한시적으로 운영하는 페이지에 답변 참조 기간을 설정합니다. 기간이 지나면 답변에서 자동 제외됩니다.</span></span></span>
+          <div class="ck-ctl">
+            <span class="st ok" id="u_always"><span class="d"></span>상시 반영</span>
+            <label class="switch"><input type="checkbox" id="u_hasterm" onchange="toggleTerm()" /><span class="sl"></span></label>
+          </div>
+        </div>
+        <div class="daterow" id="u_daterow" style="display:none">
+          <input type="date" id="u_from" onchange="syncUrlBtn()" /> <span class="muted">~</span> <input type="date" id="u_to" onchange="syncUrlBtn()" />
+        </div>
+        <div class="help" id="h_to"></div>
+      </div>
+      <div class="dr-note" id="u_procnote">ⓘ 링크 안내는 즉시, 내용 반영은 처리가 끝나면 답변에 반영됩니다. 반영 결과는 <b>헤더의 검색 미리보기</b>에서 확인할 수 있습니다.</div>
+    </div>
+    <div class="dr-foot">
+      <button class="btn" onclick="closeUrl()">취소</button>
+      <button class="btn primary" id="urldr-save" onclick="addUrl()">등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- 상세 드로어 (문서/웹페이지 공용) -->
+<div class="dov" id="detailov">
+  <div class="drawer">
+    <div class="dr-h"><h4 id="dt-h4"></h4><button class="dr-x" onclick="closeDetail()">×</button></div>
+    <div class="dr-body" id="dt-body"></div>
+    <div class="dr-foot" id="dt-foot"></div>
+  </div>
+</div>
+
+<!-- 확인 모달 -->
+<div class="ov" id="ov">
+  <div class="modal">
+    <h4 id="m_title">⚠️ 확인</h4>
+    <p id="m_body"></p>
+    <div class="acts">
+      <button class="btn" onclick="closeModal()">취소</button>
+      <button class="btn primary" id="m_ok">확인</button>
+    </div>
+  </div>
+</div>
+<!-- 텍스트 미리보기 모달 -->
+<div class="ov" id="pvov">
+  <div class="modal pv">
+    <div class="pv-h"><h4 id="pv-title"></h4><button class="dr-x" onclick="closePreview()">×</button></div>
+    <div class="pv-sub" id="pv-sub"></div>
+    <div class="pv-body" id="pv-body"></div>
+    <div class="pv-foot"><button class="btn" onclick="closePreview()">닫기</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const TODAY = new Date('2026-06-11');
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+
+/* ---- 데이터 (목업) ---- */
+let files = [
+  {name:'글로벌 배송 정책 매뉴얼.md', type:'md', size:'48 KB', date:'2026-06-09 14:22', status:'ok'},
+  {name:'교환·환불 규정.pdf', type:'pdf', size:'1.2 MB', date:'2026-06-09 14:25', status:'ok'},
+  {name:'MOQ·리드타임 운영 가이드.xlsx', type:'xls', size:'320 KB', date:'2026-06-10 09:10', status:'run'},
+  {name:'2025 시즌 프로모션 정책.pdf', type:'pdf', size:'180 KB', date:'2026-06-05 16:40', status:'off'},
+  {name:'회원·멤버십 정책.pdf', type:'pdf', size:'9.6 MB', date:'2026-06-10 09:12', status:'err', err:'파일을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요. 계속 실패하면 파일 내용을 확인해 주세요.'},
+];
+(function(){
+  const pad=['상품 상세 정보 가이드','반품 접수 프로세스','포인트·적립 정책','배송 추적 안내','사이즈 교환 안내','해외 배송 FAQ','결제 수단 안내','정기구독 운영 정책','쿠폰 사용 안내','품절·재입고 정책','개인정보 처리방침','마일리지 통합 안내','선물하기 이용 안내','앱 푸시 설정 안내','매장 픽업 안내','A/S 접수 가이드','대량구매 문의 안내','고객 등급 혜택 안내'];
+  const ext={pdf:'.pdf',md:'.md',xls:'.xlsx',txt:'.txt'}, ty=['pdf','md','xls','txt'];
+  pad.forEach((nm,k)=>{const t=ty[k%4];files.push({name:nm+ext[t],type:t,size:(40+k*9)+' KB',date:'2026-05-'+String(28-(k%20)).padStart(2,'0')+' '+String(9+(k%8)).padStart(2,'0')+':'+String((k*7)%60).padStart(2,'0'),status:'ok'});});
+})();
+
+let urls = [
+  {title:'회원가입 안내', url:'https://ctkclip.com/guide/signup', desc:'신규 회원가입 절차, 본인인증 방법, 가입 혜택 안내', mode:'link', from:'', to:'', on:true, reg:'2026-05-20 10:12'},
+  {title:'6월 신상 기획전', url:'https://ctkclip.com/event/june-new', desc:'6월 신상품 기획전 — 카테고리별 할인율 및 추천 상품', mode:'link', from:'2026-06-01', to:'2026-06-30', on:true, reg:'2026-05-28 15:40'},
+  {title:'여름 시즌 오프', url:'https://ctkclip.com/event/summer', desc:'여름 시즌 세일 사전 예고 — 품목별 최대 40% 할인 예정', mode:'link', from:'2026-07-01', to:'2026-07-31', on:true, reg:'2026-06-02 11:05'},
+  {title:'가정의 달 세일', url:'https://ctkclip.com/event/may-family', desc:'5월 가정의 달 전 품목 20% 할인 이벤트 안내', mode:'link', from:'2026-05-01', to:'2026-05-31', on:true, reg:'2026-04-25 09:30'},
+  {title:'사이즈·핏 가이드', url:'https://ctkclip.com/help/size-fit', desc:'카테고리별 사이즈 표·실측 방법·핏 추천', mode:'content', proc:'done', from:'', to:'', on:true, reg:'2026-06-08 13:20'},
+  {title:'반품·교환 절차 안내', url:'https://ctkclip.com/help/return-flow', desc:'', mode:'content', proc:'run', from:'', to:'', on:true, reg:'2026-06-11 09:05'},
+  {title:'환불 정책 안내', url:'https://ctkclip.com/help/refund', desc:'', mode:'content', proc:'fail', failKind:'index', from:'', to:'', on:true, reg:'2026-06-10 16:30'},
+  {title:'https://ctkclip.com/event/2025-old', url:'https://ctkclip.com/event/2025-old', desc:'', mode:'content', proc:'fail', failKind:'url', from:'', to:'', on:true, reg:'2026-06-10 16:35'},
+];
+
+const ICON={pdf:'PDF',txt:'TXT',xls:'XLS',md:'MD'};
+const STLABEL={ok:'답변 반영',run:'처리 중',off:'답변 제외',err:'실패'};
+const TOGTIP='<span class="tip tip-l">ⓘ<span class="tipbox">답변에 반영할지 설정합니다. 목록은 바로 바뀌고, 실제 답변에 반영되기까지 잠시 걸릴 수 있습니다.</span></span>';
+const URLTIP='<span class="tip tip-l">ⓘ<span class="tipbox">답변에 반영할지 설정합니다. 변경하면 바로 적용됩니다.</span></span>';
+
+/* ---- 탭/공통 ---- */
+let activeTab='files', fFilter='all', uFilter='all', uMode='all', fPage=1, fRpp=10, uPage=1, uRpp=10, fDir='desc', uDir='desc', fFmt='all';
+function switchTab(t){
+  activeTab=t;
+  document.querySelectorAll('.ctabs .tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  document.getElementById('tab-files').style.display=t==='files'?'':'none';
+  document.getElementById('tab-urls').style.display=t==='urls'?'':'none';
+  const isF=t==='files';
+  document.getElementById('addbtn').textContent=isF?'＋ 파일 업로드':'＋ 웹페이지 등록';
+  const sb=document.getElementById('fsearch'); sb.value=''; sb.placeholder=isF?'이름 검색':'이름·URL 검색';
+  closeMenus(); closeHF();
+  if(isF){fPage=1;renderFiles();}else{renderUrls();}
+  updateCap();
+}
+function updateCap(){document.getElementById('fcap').textContent=`${files.length} / 300`;document.getElementById('ucap').textContent=`${urls.length} / 50`;}
+function onSearch(){ if(activeTab==='files'){fPage=1;renderFiles();}else{uPage=1;renderUrls();} }
+function addAction(){ activeTab==='files'?openUpload():openUrl(); }
+function toggleMenu(e,btn){
+  e.stopPropagation();
+  const m=btn.parentElement; const open=m.classList.contains('open');
+  closeMenus(); closeHF();
+  if(!open) m.classList.add('open');
+}
+function closeMenus(){document.querySelectorAll('.menu.open').forEach(x=>x.classList.remove('open'));}
+function toggleHF(e,btn){
+  e.stopPropagation();
+  const pop=btn.parentElement.querySelector('.hfpop'); const open=pop.classList.contains('open');
+  closeHF(); closeMenus();
+  if(!open) pop.classList.add('open');
+}
+function closeHF(){document.querySelectorAll('.hfpop.open').forEach(x=>x.classList.remove('open'));}
+document.addEventListener('click',e=>{if(!e.target.closest('.menu'))closeMenus();if(!e.target.closest('.th-filter'))closeHF();});
+function badge(cls,label,title){return `<span class="st ${cls}"${title?` title="${title}"`:''}><span class="d"></span>${label}</span>`;}
+function setHF(id,v){const b=document.getElementById(id);if(b)b.classList.toggle('active',v!=='all');const pop=document.getElementById(id+'pop');if(pop)pop.querySelectorAll('button').forEach(x=>x.classList.toggle('sel',x.dataset.v===v));}
+
+/* ---- 문서 ---- */
+function setFilter(f){fFilter=f;fPage=1;closeHF();setHF('fHF',f);renderFiles();}
+function setFmtFilter(v){fFmt=v;fPage=1;closeHF();setHF('fmtHF',v);renderFiles();}
+function fListFiltered(){
+  const q=document.getElementById('fsearch').value.trim().toLowerCase();
+  return files.filter(f=>(fFilter==='all'||f.status===fFilter) && (fFmt==='all'||f.type===fFmt) && (!q||f.name.toLowerCase().includes(q)));
+}
+function toggleRef(i){
+  const f=files[i];
+  if(f.status==='off'){ // 답변 제외 → 답변 반영: 재색인(처리 중) 경유
+    f.status='run'; renderFiles(); if(_d.k==='file'&&_d.i===i)renderDetail(); toast('답변에 반영하고 있습니다');
+    setTimeout(()=>{f.status='ok'; renderFiles(); if(_d.k==='file'&&_d.i===i)renderDetail(); toast('답변에 반영됐습니다');},3000);
+  } else { // 답변 반영 → 답변 제외: 즉시
+    f.status='off'; renderFiles(); if(_d.k==='file'&&_d.i===i)renderDetail(); toast('답변에서 제외했습니다');
+  }
+}
+function renderFiles(){
+  const tb=document.getElementById('ftbody'); tb.innerHTML='';
+  const list=fListFiltered();
+  list.sort((a,b)=> fDir==='desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
+  document.getElementById('fSortAr').textContent = fDir==='desc'?'↓':'↑';
+  const total=list.length, pages=Math.max(1,Math.ceil(total/fRpp));
+  if(fPage>pages) fPage=pages;
+  const start=(fPage-1)*fRpp, end=Math.min(start+fRpp,total);
+  list.slice(start,end).forEach(f=>{
+    const i=files.indexOf(f);
+    const st = f.status==='err' ? badge('err','실패') : badge(f.status,STLABEL[f.status]);
+    let menu = `<button onclick="closeMenus();openPreview('file',${i})">미리보기</button>`;
+    if(f.status==='ok') menu += `<button onclick="closeMenus();toggleRef(${i})">답변에서 제외</button>`;
+    if(f.status==='off') menu += `<button onclick="closeMenus();toggleRef(${i})">답변에 반영</button>`;
+    if(f.status==='err') menu += `<button onclick="closeMenus();reprocess(${i})">다시 시도</button>`;
+    menu += `<button onclick="closeMenus();toast('${f.name} 다운로드 (프로토타입)')">다운로드</button>`;
+    menu += `<button class="danger" onclick="closeMenus();delFile(${i})">삭제</button>`;
+    const acts = `<div class="menu"><button class="mb" onclick="toggleMenu(event,this)">⋮</button><div class="menu-pop">${menu}</div></div>`;
+    const tr=document.createElement('tr');
+    tr.onclick=()=>openFileDetail(i);
+    tr.innerHTML=`<td><div class="fname"><span class="fi ${f.type}">${ICON[f.type]}</span><span class="nm pvname" onclick="event.stopPropagation();openPreview('file',${i})">${f.name}</span></div></td>
+      <td>${st}</td><td class="muted">${f.type.toUpperCase()}</td><td class="muted">${f.size}</td><td class="muted">${f.date}</td>
+      <td><div class="row-actions" onclick="event.stopPropagation()">${acts}</div></td>`;
+    tb.appendChild(tr);
+  });
+  const pg=document.getElementById('fpager');
+  if(!total){
+    const msg = files.length
+      ? `<div class="empty small">조건에 맞는 문서가 없습니다.</div>`
+      : `<div class="empty"><div class="eic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="M8 8l4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></div><div class="et">올린 문서를 바탕으로 챗봇이 고객 CS 질문에 답변합니다.</div><div class="ed">첫 문서를 업로드해 시작하세요.</div><button class="btn primary" onclick="openUpload()">＋ 파일 업로드</button></div>`;
+    tb.innerHTML=`<tr><td colspan="6" style="padding:0">${msg}</td></tr>`;
+  }
+  pg.style.display = files.length ? 'flex' : 'none';
+  document.getElementById('pgRange').textContent = total ? `${start+1}–${end} of ${total}` : '0 of 0';
+  document.getElementById('pgFirst').disabled = document.getElementById('pgPrev').disabled = fPage<=1;
+  document.getElementById('pgNext').disabled = document.getElementById('pgLast').disabled = fPage>=pages;
+  updateCap();
+}
+function setRpp(v){fRpp=+v;fPage=1;renderFiles();}
+function goPage(d){
+  const pages=Math.max(1,Math.ceil(fListFiltered().length/fRpp));
+  if(d==='first')fPage=1; else if(d==='prev')fPage=Math.max(1,fPage-1); else if(d==='next')fPage=Math.min(pages,fPage+1); else if(d==='last')fPage=pages;
+  renderFiles();
+}
+function toggleSort(){fDir=fDir==='desc'?'asc':'desc';fPage=1;renderFiles();}
+function toggleUSort(){uDir=uDir==='desc'?'asc':'desc';uPage=1;renderUrls();}
+function setURpp(v){uRpp=+v;uPage=1;renderUrls();}
+function goUPage(d){
+  const pages=Math.max(1,Math.ceil(uListFiltered().length/uRpp));
+  if(d==='first')uPage=1; else if(d==='prev')uPage=Math.max(1,uPage-1); else if(d==='next')uPage=Math.min(pages,uPage+1); else if(d==='last')uPage=pages;
+  renderUrls();
+}
+
+/* ---- 상세 드로어 (공용) ---- */
+let _d={k:null,i:-1};
+function openFileDetail(i){_d={k:'file',i};renderDetail();document.getElementById('detailov').classList.add('show');}
+function openUrlDetail(i){_d={k:'url',i};renderDetail();document.getElementById('detailov').classList.add('show');}
+function closeDetail(){document.getElementById('detailov').classList.remove('show');_d={k:null,i:-1};}
+function renderDetail(){
+  if(_d.k==='file'){
+    const f=files[_d.i]; if(!f)return;
+    document.getElementById('dt-h4').innerHTML=`<span class="fi ${f.type}">${ICON[f.type]}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</span>`;
+    document.getElementById('dt-body').innerHTML=`
+      <div class="dt-list">
+        <div><dt>형식</dt><dd>${f.type.toUpperCase()}</dd></div>
+        <div><dt>크기</dt><dd>${f.size}</dd></div>
+        <div><dt>업로드 일시</dt><dd>${f.date}</dd></div>
+        <div><dt>상태 ${(f.status==='ok'||f.status==='off')?TOGTIP:''}</dt><dd>${statCellFile(f,_d.i)}</dd></div>
+      </div>
+      ${f.status==='err'?`<div class="dt-err">${f.err||''}</div>`:''}`;
+    let foot='';
+    if(f.status==='err') foot+=`<button class="btn" onclick="reprocess(${_d.i})">다시 시도</button>`;
+    foot+=`<button class="btn" onclick="toast('다운로드 (프로토타입)')">다운로드</button>`;
+    setFoot(foot);
+  } else if(_d.k==='url'){
+    const u=urls[_d.i]; if(!u)return;
+    const term=termText(u);
+    document.getElementById('dt-h4').innerHTML=`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.title}</span>`;
+    document.getElementById('dt-body').innerHTML=`
+      <div class="dt-list">
+        <div><dt>등록 유형</dt><dd>${modeBadge(u)}</dd></div>
+        <div><dt>URL</dt><dd><a href="${u.url}" target="_blank">${u.url}</a></dd></div>
+        <div><dt>설명</dt><dd>${u.desc||'—'}</dd></div>
+        <div><dt>유효기간</dt><dd>${term}</dd></div>
+        <div><dt>등록 일시</dt><dd>${u.reg||'—'}</dd></div>
+        <div><dt>상태 ${(urlState(u).cat==='on'||urlState(u).cat==='off')?URLTIP:''}</dt><dd>${statCellUrl(u,_d.i)}</dd></div>
+      </div>
+      ${u.mode==='content'?(u.proc==='fail'?`<div class="dt-err">${urlFailMsg(u)}</div>`:`<div class="dr-note">ⓘ 페이지 내용을 가져와 답변에 직접 활용합니다. 입력한 페이지 하나만 가져오며, 페이지가 바뀌어도 자동으로 업데이트되지 않으니, 바뀌면 직접 업데이트해 주세요.</div>`):''}`;
+    let foot='';
+    if(u.mode==='content' && u.proc==='fail') foot+=`<button class="btn" onclick="closeDetail();retryUrl(${_d.i})">다시 시도</button>`;
+    else if(u.mode==='content') foot+=`<button class="btn" onclick="closeDetail();recollect(${_d.i})">내용 업데이트</button>`;
+    foot+=`<button class="btn" onclick="openUrl(${_d.i})">수정</button>`;
+    setFoot(foot);
+  }
+}
+function statCellFile(f,i){
+  if(f.status==='ok'||f.status==='off'){
+    return `<div class="dt-statctl">${badge(f.status,STLABEL[f.status])}<label class="switch"><input type="checkbox" ${f.status==='ok'?'checked':''} onchange="toggleRef(${i})"><span class="sl"></span></label></div>`;
+  }
+  return f.status==='err'?badge('err','실패'):badge(f.status,STLABEL[f.status]);
+}
+function statCellUrl(u,i){
+  const s=urlState(u);
+  if(s.cat==='on'||s.cat==='off'){
+    return `<div class="dt-statctl">${badge(s.cls,s.label)}<label class="switch"><input type="checkbox" ${u.on!==false?'checked':''} onchange="toggleUrlRef(${i})"><span class="sl"></span></label></div>`;
+  }
+  return badge(s.cls,s.label);
+}
+function setFoot(html){const f=document.getElementById('dt-foot');f.innerHTML=html;f.style.display=html?'flex':'none';}
+
+/* ---- 업로드 드로어 (문서) ---- */
+let staged=[], _pick=0;
+const SAMPLES=[
+  {name:'시즌 프로모션 정책.md',type:'md',size:'31 KB'},
+  {name:'교환·환불 규정.pdf',type:'pdf',size:'1.2 MB'},   /* 기존과 동일 파일명 → 교체 데모 */
+  {name:'배송 지역·도서산간 안내.pdf',type:'pdf',size:'880 KB'},
+  {name:'상품 사이즈·케어 가이드.xlsx',type:'xls',size:'210 KB'},
+  {name:'고객센터 운영 안내.txt',type:'txt',size:'12 KB'}
+];
+function openUpload(){ staged=[]; renderStaged(); document.getElementById('upov').classList.add('show'); }
+function closeUpload(){ document.getElementById('upov').classList.remove('show'); }
+function stagePick(){
+  if(files.length+staged.length>=300){toast('문서는 최대 300개까지 업로드할 수 있습니다');return;}
+  const s=SAMPLES[_pick%SAMPLES.length]; _pick++;
+  staged.push({...s}); renderStaged();
+}
+function unstage(i){staged.splice(i,1);renderStaged();}
+function renderStaged(){
+  const w=document.getElementById('staged'); w.innerHTML='';
+  staged.forEach((s,i)=>{
+    const dup=files.some(f=>f.name===s.name);
+    const d=document.createElement('div'); d.className='staged'+(dup?' dup':'');
+    d.innerHTML=`<span class="fi ${s.type}">${ICON[s.type]}</span>
+      <span class="nm">${s.name}<span class="sx"> · ${s.size}</span></span>
+      ${dup?'<span class="dupchip">교체됨</span>':'<span class="st ok"><span class="d"></span>업로드 완료</span>'}
+      <button class="btn danger" style="padding:5px 9px;font-size:12px" onclick="unstage(${i})">✕</button>`;
+    w.appendChild(d);
+  });
+  document.getElementById('upconfirm').disabled = staged.length===0;
+}
+function confirmUpload(){
+  const n=staged.length; if(!n) return;
+  const conflicts=staged.filter(s=>files.some(f=>f.name===s.name));
+  if(conflicts.length){
+    confirmModal('교체 업로드', conflicts.map(c=>'“'+c.name+'”').join(', ')+' — 같은 파일명이 이미 있습니다. 기존 문서를 교체할까요? 기존 내용은 새 내용으로 대체되며 복구할 수 없습니다.', doUpload, '교체');
+    return;
+  }
+  doUpload();
+}
+function doUpload(){
+  const n=staged.length, rep=staged.filter(s=>files.some(f=>f.name===s.name)).length;
+  staged.forEach(s=>{
+    const ex=files.findIndex(f=>f.name===s.name);
+    const f={...s,date:ymd(TODAY)+' 09:30',status:'run'};
+    if(ex>=0){ files[ex]=f; } else { files.push(f); }
+    setTimeout(()=>{f.status='ok';renderFiles();if(_d.k==='file'&&files[_d.i]===f)renderDetail();toast('“'+f.name+'” 처리가 완료되어 답변에 반영됐습니다');},4200);
+  });
+  staged=[]; closeUpload(); renderFiles();
+  toast((rep?rep+'개 교체 · ':'')+n+'개 파일을 업로드했습니다. 처리가 끝나면 답변에 반영됩니다');
+}
+function reprocess(i){const f=files[i];f.status='run';delete f.err;renderFiles();if(_d.k==='file'&&_d.i===i)renderDetail();
+  setTimeout(()=>{f.status='ok';renderFiles();if(_d.k==='file'&&_d.i===i)renderDetail();toast('다시 처리했습니다. 답변에 반영됐습니다');},3000);}
+function delFile(i){confirmModal('문서 삭제','“'+files[i].name+'”을(를) 삭제하시겠습니까? 목록에서는 바로 사라지고, 답변에서 완전히 빠지기까지는 잠시 걸릴 수 있습니다. 복구할 수 없습니다.',()=>{files.splice(i,1);closeDetail();renderFiles();toast('삭제했습니다');},'삭제');}
+
+/* ---- 웹페이지 ---- */
+function setUFilter(f){uFilter=f;uPage=1;closeHF();setHF('uHF',f);renderUrls();}
+function setModeFilter(m){uMode=m;uPage=1;closeHF();setHF('mHF',m);renderUrls();}
+function modeBadge(u){return `<span class="mode ${u.mode}">${u.mode==='content'?'내용 반영':'링크 안내'}</span>`;}
+function urlState(u){
+  if(u.mode==='content' && u.proc==='fail') return {cls:'err',cat:'err',label:'실패'};
+  if(u.mode==='content' && u.proc==='run') return {cls:'run',cat:'run',label:'처리 중'};
+  const f=u.from?new Date(u.from):null, t=u.to?new Date(u.to):null;
+  if(t&&TODAY>t) return {cls:'off',cat:'exp',label:'기간 만료'};
+  if(f&&TODAY<f) return {cls:'soon',cat:'soon',label:'반영 예정'};
+  if(u.on===false) return {cls:'off',cat:'off',label:'답변 제외'};
+  return {cls:'ok',cat:'on',label:'답변 반영'};
+}
+function termText(u){
+  if(u.from&&u.to) return `${u.from} ~ ${u.to}`;
+  if(u.to) return `~ ${u.to}`;
+  if(u.from) return `${u.from} ~`;
+  return '상시';
+}
+function toggleUrlRef(i){urls[i].on=(urls[i].on===false);renderUrls();if(_d.k==='url'&&_d.i===i)renderDetail();toast(urls[i].on!==false?'답변에 반영됩니다':'답변에서 제외했습니다');}
+function recollect(i){
+  const u=urls[i]; u.proc='run'; renderUrls(); if(_d.k==='url'&&_d.i===i)renderDetail(); toast('내용을 업데이트하고 있습니다');
+  setTimeout(()=>{u.proc='done';renderUrls();if(_d.k==='url'&&_d.i===i)renderDetail();toast('내용을 업데이트했습니다');},3000);
+}
+function urlFailMsg(u){ return '웹페이지를 처리하지 못했습니다. 잠시 후 다시 시도해 주세요. 계속 실패하면 URL을 확인해 주세요.'; }
+function retryUrl(i){
+  const u=urls[i]; u.proc='run'; renderUrls(); if(_d.k==='url'&&_d.i===i)renderDetail(); toast('다시 처리하고 있습니다');
+  setTimeout(()=>{u.proc='done'; delete u.failKind; renderUrls(); if(_d.k==='url'&&_d.i===i)renderDetail(); toast('처리해 답변에 반영됐습니다');},3000);
+}
+function uListFiltered(){
+  const q=document.getElementById('fsearch').value.trim().toLowerCase();
+  return urls.filter(u=>{
+    if(uMode!=='all' && u.mode!==uMode) return false;
+    const s=urlState(u);
+    if(uFilter!=='all' && s.cat!==uFilter) return false;
+    if(q && !(u.title.toLowerCase().includes(q)||(u.desc||'').toLowerCase().includes(q)||(u.url||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+function renderUrls(){
+  const tb=document.getElementById('utbody'); tb.innerHTML='';
+  const list=uListFiltered();
+  list.sort((a,b)=> uDir==='desc' ? (b.reg||'').localeCompare(a.reg||'') : (a.reg||'').localeCompare(b.reg||''));
+  document.getElementById('uSortAr').textContent = uDir==='desc'?'↓':'↑';
+  const total=list.length, pages=Math.max(1,Math.ceil(total/uRpp));
+  if(uPage>pages) uPage=pages;
+  const start=(uPage-1)*uRpp, end=Math.min(start+uRpp,total);
+  list.slice(start,end).forEach(u=>{
+    const i=urls.indexOf(u);
+    const s=urlState(u);
+    const term=termText(u);
+    const pv=u.mode==='content'&&u.proc==='done';
+    const t1=pv?`<div class="t1 pvname" onclick="event.stopPropagation();openPreview('url',${i})">${u.title}</div>`:`<div class="t1">${u.title}</div>`;
+    let menu='';
+    if(pv) menu+=`<button onclick="closeMenus();openPreview('url',${i})">미리보기</button>`;
+    if(s.cat==='on') menu+=`<button onclick="closeMenus();toggleUrlRef(${i})">답변에서 제외</button>`;
+    if(s.cat==='off') menu+=`<button onclick="closeMenus();toggleUrlRef(${i})">답변에 반영</button>`;
+    if(u.mode==='content' && u.proc==='fail') menu+=`<button onclick="closeMenus();retryUrl(${i})">다시 시도</button>`;
+    else if(u.mode==='content') menu+=`<button onclick="closeMenus();recollect(${i})">내용 업데이트</button>`;
+    menu+=`<button onclick="closeMenus();openUrl(${i})">수정</button><button class="danger" onclick="closeMenus();delUrl(${i})">삭제</button>`;
+    const acts=`<div class="menu"><button class="mb" onclick="toggleMenu(event,this)">⋮</button><div class="menu-pop">${menu}</div></div>`;
+    const tr=document.createElement('tr');
+    tr.onclick=()=>openUrlDetail(i);
+    tr.innerHTML=`<td><div class="ttl-cell">${t1}<div class="t2 url">${u.url}</div></div></td>
+      <td>${modeBadge(u)}</td>
+      <td>${badge(s.cls,s.label)}</td>
+      <td class="muted" style="white-space:nowrap">${term}</td>
+      <td class="muted" style="white-space:nowrap">${u.reg||'—'}</td>
+      <td><div class="row-actions" onclick="event.stopPropagation()">${acts}</div></td>`;
+    tb.appendChild(tr);
+  });
+  if(!list.length){
+    const msg = urls.length
+      ? `<div class="empty small">조건에 맞는 웹페이지가 없습니다.</div>`
+      : `<div class="empty"><div class="eic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></div><div class="et">문서에 없는 내용을 웹페이지로 안내하거나 반영할 수 있습니다.</div><div class="ed">회원가입·이벤트·도움말 같은 페이지를 등록해 주세요.</div><button class="btn primary" onclick="openUrl()">＋ 웹페이지 등록</button></div>`;
+    tb.innerHTML=`<tr><td colspan="6" style="padding:0">${msg}</td></tr>`;
+  }
+  const pg=document.getElementById('upager');
+  pg.style.display = urls.length ? 'flex' : 'none';
+  document.getElementById('upgRange').textContent = total ? `${start+1}–${end} of ${total}` : '0 of 0';
+  document.getElementById('upgFirst').disabled = document.getElementById('upgPrev').disabled = uPage<=1;
+  document.getElementById('upgNext').disabled = document.getElementById('upgLast').disabled = uPage>=pages;
+  updateCap();
+}
+
+/* ---- 등록/수정 드로어 ---- */
+let _uEdit=-1, _urlMode='link', _bulk=false;
+function setUrlMode(m){
+  _urlMode=m;
+  document.getElementById('opt_link').classList.toggle('on',m==='link');
+  document.getElementById('opt_content').classList.toggle('on',m==='content');
+  const req=(m==='link');
+  document.getElementById('lab_title').innerHTML = req?'이름 <span class="req">*</span>':'이름 <span class="cc">(선택)</span>';
+  document.getElementById('lab_desc').innerHTML = req?'설명 <span class="req">*</span>':'설명 <span class="cc">(선택)</span>';
+  document.getElementById('u_guide').innerHTML = req
+    ? 'ⓘ <b>링크 안내</b> — 관련 질문이 들어오면 답변에 이 링크를 함께 안내합니다. 페이지 내용 자체는 답변에 담기지 않습니다. 어떤 질문에 연결할지는 입력한 <b>이름·설명</b>으로 판단하니, 고객이 실제 쓰는 표현으로 적어 주세요.'
+    : 'ⓘ <b>내용 반영</b> — 페이지 내용을 가져와 답변에 직접 활용합니다. 입력한 <b>페이지 하나만</b> 가져오며, 페이지가 바뀌어도 자동으로 업데이트되지 않으니, 바뀌면 직접 업데이트해 주세요.';
+  if(req){ document.getElementById('u_bulkck').checked=false; setBulk(false); document.getElementById('u_bulkrow').style.display='none'; }
+  else if(_uEdit<0){ document.getElementById('u_bulkrow').style.display='flex'; }
+  onUrlInput();
+}
+function setBulk(on){
+  _bulk=on;
+  document.getElementById('u_single').style.display=on?'none':'';
+  document.getElementById('u_bulk_wrap').style.display=on?'':'none';
+  syncUrlBtn();
+}
+function openUrl(i){
+  const edit=(typeof i==='number'); _uEdit=edit?i:-1;
+  document.getElementById('u_bulkck').checked=false; setBulk(false);
+  document.getElementById('u_bulkrow').style.display=edit?'none':'flex';
+  const u=edit?urls[i]:{url:'',title:'',desc:'',from:'',to:'',mode:'link'};
+  setUrlMode(u.mode||'link');
+  document.getElementById('u_url').value=u.url||'';
+  document.getElementById('u_title').value=u.title||'';
+  document.getElementById('u_desc').value=u.desc||'';
+  document.getElementById('u_bulk').value='';
+  document.getElementById('u_from').value=u.from||''; document.getElementById('u_to').value=u.to||'';
+  const hasTerm=!!(u.from||u.to);
+  document.getElementById('u_hasterm').checked=hasTerm;
+  document.getElementById('u_daterow').style.display=hasTerm?'flex':'none';
+  document.getElementById('u_always').style.display=hasTerm?'none':'flex';
+  ['h_url','h_title','h_desc','h_to','h_bulk'].forEach(unflag);
+  document.getElementById('urldr-h4').textContent=edit?'웹페이지 수정':'웹페이지 등록';
+  document.getElementById('urldr-save').textContent=edit?'저장':'등록';
+  onUrlInput();
+  document.getElementById('urlov').classList.add('show');
+}
+function onUrlInput(){
+  document.getElementById('cc_title').textContent=document.getElementById('u_title').value.length+' / 40';
+  document.getElementById('cc_desc').textContent=document.getElementById('u_desc').value.length+' / 200';
+  syncUrlBtn();
+}
+function bulkValidLines(){
+  return document.getElementById('u_bulk').value.split('\n').map(s=>s.trim()).filter(l=>/^https?:\/\/.+/.test(l));
+}
+function urlFormValid(){
+  const hasTerm=document.getElementById('u_hasterm').checked;
+  const from=hasTerm?v('u_from'):'', to=hasTerm?v('u_to'):'';
+  if(hasTerm && !to) return false;
+  if(hasTerm && from && to && new Date(from)>new Date(to)) return false;
+  if(_bulk){ const n=bulkValidLines().length; return n>0 && n<=(50-urls.length); }
+  const url=v('u_url'),title=v('u_title'),desc=v('u_desc');
+  if(!/^https?:\/\/.+/.test(url)) return false;
+  if(_urlMode==='link'){
+    if(title.length<1) return false;
+    if(desc.length<1) return false;
+  }
+  return true;
+}
+function syncUrlBtn(){
+  const hasTerm=document.getElementById('u_hasterm').checked;
+  const from=hasTerm?v('u_from'):'', to=hasTerm?v('u_to'):'';
+  if(hasTerm && from && to && new Date(from)>new Date(to)) flag('h_to','시작일이 종료일보다 늦습니다'); else unflag('h_to');
+  if(_bulk){ const n=bulkValidLines().length, room=50-urls.length; if(n>room) flag('h_bulk',`최대 50개까지 등록할 수 있어요. 현재 ${urls.length}개 → ${room}개까지 추가 가능(입력 ${n}개)`); else unflag('h_bulk'); } else unflag('h_bulk');
+  document.getElementById('urldr-save').disabled=!urlFormValid();
+}
+function toggleTerm(){
+  const on=document.getElementById('u_hasterm').checked;
+  const fromEl=document.getElementById('u_from'), toEl=document.getElementById('u_to');
+  document.getElementById('u_daterow').style.display=on?'flex':'none';
+  document.getElementById('u_always').style.display=on?'none':'flex';
+  if(on){
+    if(!fromEl.value) fromEl.value=ymd(TODAY);
+    if(!toEl.value) toEl.value=ymd(addDays(TODAY,6));
+  }else{ fromEl.value=''; toEl.value=''; unflag('h_to'); }
+  syncUrlBtn();
+}
+function closeUrl(){document.getElementById('urlov').classList.remove('show');_uEdit=-1;}
+function addUrl(){
+  if(!urlFormValid()){ syncUrlBtn(); return; }
+  const hasTerm=document.getElementById('u_hasterm').checked;
+  const from=hasTerm?v('u_from'):'', to=hasTerm?v('u_to'):'';
+  const mode=_urlMode;
+  // 일괄 등록
+  if(_bulk && _uEdit<0){
+    const lines=bulkValidLines();
+    if(lines.length > 50-urls.length){ syncUrlBtn(); return; } // 한도 초과 → 등록 불가(사유는 인라인 안내)
+    lines.forEach(u=>{
+      const o={title:u,url:u,desc:'',mode,from,to,on:true,reg:ymd(TODAY)+' 09:30'};
+      if(mode==='content'){ o.proc='run'; setTimeout(()=>{o.proc='done';renderUrls();},3500); }
+      urls.unshift(o);
+    });
+    renderUrls(); closeUrl();
+    let msg=lines.length+'개 웹페이지를 등록했습니다';
+    if(mode==='content') msg+='. 처리 후 반영됩니다';
+    toast(msg);
+    return;
+  }
+  // 단일 등록/수정
+  const url=v('u_url'); let title=v('u_title'); const desc=v('u_desc');
+  if(mode==='content' && !title) title=url; // 이름 미입력 시 URL을 라벨로
+  if(_uEdit<0 && urls.length>=50){toast('웹페이지는 최대 50개까지 등록할 수 있습니다');return;}
+  if(_uEdit>=0){
+    const o=urls[_uEdit];
+    Object.assign(o,{title,url,desc,mode,from,to});
+    if(mode==='content'){ o.proc='run'; setTimeout(()=>{o.proc='done';renderUrls();if(_d.k==='url'&&urls[_d.i]===o)renderDetail();toast('내용을 업데이트했습니다');},3000); }
+    else { delete o.proc; }
+    renderUrls(); closeUrl(); if(_d.k==='url')renderDetail();
+    toast(mode==='content'?'수정했습니다. 처리 후 반영됩니다':'수정했습니다');
+  }else{
+    const o={title,url,desc,mode,from,to,on:true,reg:ymd(TODAY)+' 09:30'};
+    if(mode==='content'){ o.proc='run'; setTimeout(()=>{o.proc='done';renderUrls();if(_d.k==='url'&&urls[_d.i]===o)renderDetail();toast('“'+title+'” 내용을 반영했습니다');},3500); }
+    urls.unshift(o);
+    renderUrls(); closeUrl();
+    toast(mode==='content'?'등록했습니다. 처리 후 답변에 반영됩니다':'등록했습니다');
+  }
+}
+function delUrl(i){confirmModal('웹페이지 삭제','“'+urls[i].title+'”을(를) 삭제하시겠습니까? 복구할 수 없습니다.',()=>{urls.splice(i,1);closeDetail();renderUrls();toast('삭제했습니다');},'삭제');}
+
+/* ---- utils ---- */
+function v(id){return document.getElementById(id).value.trim();}
+function flag(id,m){const e=document.getElementById(id);e.textContent=m;e.classList.add('bad');}
+function unflag(id){const e=document.getElementById(id);if(!e)return;e.textContent='';e.classList.remove('bad');}
+let _okfn=null;
+function confirmModal(title,body,fn,okLabel){document.getElementById('m_title').textContent='⚠️ '+title;document.getElementById('m_body').textContent=body;document.getElementById('m_ok').textContent=okLabel||'확인';_okfn=fn;document.getElementById('ov').classList.add('show');}
+function closeModal(){document.getElementById('ov').classList.remove('show');_okfn=null;}
+document.getElementById('m_ok').onclick=()=>{const fn=_okfn;closeModal();if(fn)fn();};
+document.getElementById('ov').onclick=e=>{if(e.target.id==='ov')closeModal();};
+document.getElementById('upov').onclick=e=>{if(e.target.id==='upov')closeUpload();};
+document.getElementById('urlov').onclick=e=>{if(e.target.id==='urlov')closeUrl();};
+document.getElementById('detailov').onclick=e=>{if(e.target.id==='detailov')closeDetail();};
+document.getElementById('pvov').onclick=e=>{if(e.target.id==='pvov')closePreview();};
+function closePreview(){document.getElementById('pvov').classList.remove('show');}
+function openPreview(kind,i){
+  let title,sub,body;
+  if(kind==='file'){ const f=files[i]; title=f.name; sub='형식 '+f.type.toUpperCase()+' · '+f.size; body=mockDocText(f.name); }
+  else { const u=urls[i]; title=u.title; sub=u.url; body=mockUrlText(u); }
+  document.getElementById('pv-title').textContent=title;
+  document.getElementById('pv-sub').textContent=sub;
+  document.getElementById('pv-body').textContent=body;
+  document.getElementById('pvov').classList.add('show');
+}
+function mockDocText(name){return '(프로토타입 예시 — 실제로는 업로드한 문서의 본문 텍스트가 그대로 표시됩니다.)\n\n배송은 결제 완료 후 평균 2~3영업일 이내 출고되며, 도서·산간 지역은 1~2일이 더 걸릴 수 있습니다. 5만 원 이상 구매 시 무료배송이 적용되고, 그 미만은 배송비 3,000원이 부과됩니다.\n\n교환·환불은 상품을 받은 날부터 7일 이내에 신청할 수 있습니다. 단순 변심은 왕복 배송비가 부과되며, 상품 불량·오배송은 무료로 처리됩니다.\n\n회원 등급별 적립률, 쿠폰 사용 조건, 정기구독 해지 방법도 함께 정리되어 있습니다.';}
+function mockUrlText(u){return '수집 원본: '+u.url+'\n수집 일시: '+(u.reg||'-')+'\n\n(프로토타입 예시 — 실제로는 페이지에서 추출한 본문 텍스트가 그대로 표시됩니다.)\n\n사이즈는 실측 기준으로 안내되며, 같은 호수라도 제품·핏에 따라 차이가 있을 수 있습니다. 상의는 어깨너비·가슴단면·총장, 하의는 허리단면·밑위·총장을 참고해 주세요.\n\n평소 사이즈와 1~2cm 정도 오차가 있을 수 있으니 구매 전 상세 페이지의 치수표를 확인해 주세요. 사이즈 교환은 상품을 받은 날부터 7일 이내에 신청할 수 있습니다.';}
+let _tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2600);}
+
+const dz=document.getElementById('mdrop');
+dz.onclick=stagePick;
+dz.ondragover=e=>{e.preventDefault();dz.classList.add('hot');};
+dz.ondragleave=()=>dz.classList.remove('hot');
+dz.ondrop=e=>{e.preventDefault();dz.classList.remove('hot');stagePick();};
+
+renderFiles();renderUrls();
+</script>
+</body>
+</html>
