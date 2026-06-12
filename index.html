@@ -191,6 +191,12 @@
   .ck-label{font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;color:var(--ink)}
   .ck-ctl{display:flex;align-items:center;gap:10px}
   .termhint{font-size:11.5px;color:var(--ink-3);margin-top:7px;line-height:1.5}
+  .urlchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  .urlchips:empty{display:none}
+  .urlchip{display:inline-flex;align-items:center;gap:6px;max-width:100%;background:rgba(138,70,255,.10);color:var(--brand);border:1px solid rgba(138,70,255,.30);border-radius:14px;padding:3px 4px 3px 10px;font-size:12px;line-height:1.5}
+  .urlchip .u{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px}
+  .urlchip button{border:none;background:rgba(138,70,255,.18);color:var(--brand);border-radius:50%;width:16px;height:16px;line-height:1;cursor:pointer;font-size:13px;padding:0;flex:none}
+  .urlchip button:hover{background:rgba(138,70,255,.32)}
   .field label.lbl-row{display:flex;justify-content:space-between;align-items:baseline}
   .field label.switch{display:inline-flex;margin:0;font-weight:400}
   .cc{font-size:11px;color:var(--ink-3);font-weight:500}
@@ -392,17 +398,15 @@
       </div>
       <div class="guide" id="u_guide"></div>
 
-      <div class="ck-row" id="u_bulkrow">
-        <span class="ck-label">여러 개 한 번에 등록 <span class="tip tip-l">ⓘ<span class="tipbox">여러 URL을 한 줄에 하나씩 붙여넣어 한꺼번에 등록합니다. 이름은 URL로 기본 설정되며, 등록 후 목록에서 이름·설명을 보완할 수 있습니다.</span></span></span>
-        <label class="switch"><input type="checkbox" id="u_bulkck" onchange="setBulk(this.checked)" /><span class="sl"></span></label>
-      </div>
 
       <!-- 단일 등록 -->
       <div id="u_single">
         <div class="field">
           <label><span id="lab_url">URL <span class="req">*</span></span></label>
-          <input id="u_url" autocomplete="off" placeholder="https://example.com/help/delivery" oninput="onUrlInput()" />
+          <div class="urlchips" id="u_chips"></div>
+          <input id="u_url" autocomplete="off" placeholder="https://example.com/help/delivery" oninput="onUrlInput()" onkeydown="urlKey(event)" onpaste="urlPaste(event)" onblur="commitTrailing()" />
           <div class="help" id="h_url"></div>
+          <div class="termhint" id="u_multihint" style="display:none">여러 개는 <b>쉼표</b> 또는 <b>Enter</b>로 구분하세요. 입력한 URL은 모두 <b>같은 이름·설명</b>으로 한 번에 등록됩니다.</div>
         </div>
         <div class="field">
           <label class="lbl-row"><span id="lab_title">이름 <span class="req">*</span></span><span class="cc" id="cc_title">0 / 40</span></label>
@@ -416,15 +420,6 @@
         </div>
       </div>
 
-      <!-- 일괄 등록 -->
-      <div id="u_bulk_wrap" style="display:none">
-        <div class="field">
-          <label>URL <span class="req">*</span></label>
-          <textarea id="u_bulk" autocomplete="off" style="min-height:118px" placeholder="https://example.com/page-1&#10;https://example.com/page-2&#10;https://example.com/page-3" oninput="onUrlInput()"></textarea>
-          <div class="help" id="h_bulk"></div>
-          <div class="termhint">한 줄에 하나씩 입력합니다. 이름은 URL로 기본 설정되며, 등록 후 목록에서 이름·설명을 보완할 수 있습니다.</div>
-        </div>
-      </div>
 
       <!-- 유효기간 (공통) -->
       <div class="field">
@@ -816,43 +811,35 @@ function renderUrls(){
 }
 
 /* ---- 등록/수정 드로어 ---- */
-let _uEdit=-1, _urlMode='link', _bulk=false;
+let _uEdit=-1, _urlMode='link', _urlChips=[];
 function setUrlMode(m){
   _urlMode=m;
   document.getElementById('opt_link').classList.toggle('on',m==='link');
   document.getElementById('opt_content').classList.toggle('on',m==='content');
   const req=(m==='link');
-  document.getElementById('lab_title').innerHTML = req?'이름 <span class="req">*</span>':'이름 <span class="cc">(선택)</span>';
+  document.getElementById('lab_title').innerHTML = '이름 <span class="req">*</span>';
   document.getElementById('lab_desc').innerHTML = req?'설명 <span class="req">*</span>':'설명 <span class="cc">(선택)</span>';
   document.getElementById('u_guide').innerHTML = req
     ? 'ⓘ <b>링크 안내</b> — 관련 질문이 들어오면 답변에 이 링크를 함께 안내합니다. 페이지 내용 자체는 답변에 담기지 않습니다. 어떤 질문에 연결할지는 입력한 <b>이름·설명</b>으로 판단하니, 고객이 실제 쓰는 표현으로 적어 주세요.'
-    : 'ⓘ <b>내용 반영</b> — 페이지 내용을 가져와 답변에 직접 활용합니다. 입력한 <b>페이지 하나만</b> 가져오며, 페이지가 바뀌어도 자동으로 업데이트되지 않으니, 바뀌면 직접 업데이트해 주세요.';
-  if(req){ document.getElementById('u_bulkck').checked=false; setBulk(false); document.getElementById('u_bulkrow').style.display='none'; }
-  else if(_uEdit<0){ document.getElementById('u_bulkrow').style.display='flex'; }
+    : 'ⓘ <b>내용 반영</b> — 페이지 내용을 가져와 답변에 직접 활용합니다. 각 페이지의 내용만 1회 가져오며(하위 페이지는 따라가지 않음), 페이지가 바뀌어도 자동 업데이트되지 않으니 바뀌면 직접 업데이트해 주세요.';
+  document.getElementById('u_multihint').style.display = (!req && _uEdit<0)?'block':'none';
+  if(req){ _urlChips=[]; renderChips(); }
   onUrlInput();
-}
-function setBulk(on){
-  _bulk=on;
-  document.getElementById('u_single').style.display=on?'none':'';
-  document.getElementById('u_bulk_wrap').style.display=on?'':'none';
-  syncUrlBtn();
 }
 function openUrl(i){
   const edit=(typeof i==='number'); _uEdit=edit?i:-1;
-  document.getElementById('u_bulkck').checked=false; setBulk(false);
-  document.getElementById('u_bulkrow').style.display=edit?'none':'flex';
+  _urlChips=[]; renderChips();
   const u=edit?urls[i]:{url:'',title:'',desc:'',from:'',to:'',mode:'link'};
   setUrlMode(u.mode||'link');
   document.getElementById('u_url').value=u.url||'';
   document.getElementById('u_title').value=u.title||'';
   document.getElementById('u_desc').value=u.desc||'';
-  document.getElementById('u_bulk').value='';
   document.getElementById('u_from').value=u.from||''; document.getElementById('u_to').value=u.to||'';
   const hasTerm=!!(u.from||u.to);
   document.getElementById('u_hasterm').checked=hasTerm;
   document.getElementById('u_daterow').style.display=hasTerm?'flex':'none';
   document.getElementById('u_always').style.display=hasTerm?'none':'flex';
-  ['h_url','h_title','h_desc','h_to','h_bulk'].forEach(unflag);
+  ['h_url','h_title','h_desc','h_to'].forEach(unflag);
   document.getElementById('urldr-h4').textContent=edit?'웹페이지 수정':'웹페이지 등록';
   document.getElementById('urldr-save').textContent=edit?'저장':'등록';
   onUrlInput();
@@ -861,30 +848,59 @@ function openUrl(i){
 function onUrlInput(){
   document.getElementById('cc_title').textContent=document.getElementById('u_title').value.length+' / 40';
   document.getElementById('cc_desc').textContent=document.getElementById('u_desc').value.length+' / 200';
+  if(chipMode()){
+    const el=document.getElementById('u_url');
+    if(/[\n,]/.test(el.value)){
+      const parts=el.value.split(/[\n,]/);
+      const trailing=parts.pop();
+      addChips(parts);
+      el.value=trailing;
+      renderChips();
+    }
+  }
   syncUrlBtn();
 }
-function bulkValidLines(){
-  return document.getElementById('u_bulk').value.split('\n').map(s=>s.trim()).filter(l=>/^https?:\/\/.+/.test(l));
+function chipMode(){ return _urlMode==='content' && _uEdit<0; }
+function isUrl(s){ return /^https?:\/\/\S+/.test((s||'').trim()); }
+function addChips(arr){ arr.map(s=>s.trim()).filter(isUrl).forEach(u=>{ if(!_urlChips.includes(u)) _urlChips.push(u); }); }
+function renderChips(){
+  const box=document.getElementById('u_chips'); if(!box) return;
+  box.innerHTML=_urlChips.map((u,idx)=>`<span class="urlchip"><span class="u" title="${u}">${u}</span><button type="button" onclick="rmChip(${idx})">×</button></span>`).join('');
 }
+function rmChip(i){ _urlChips.splice(i,1); renderChips(); syncUrlBtn(); }
+function commitTrailing(){
+  if(!chipMode()) return;
+  const el=document.getElementById('u_url');
+  if(el.value.trim()){ addChips([el.value]); el.value=''; renderChips(); }
+  syncUrlBtn();
+}
+function urlKey(e){ if(chipMode() && e.key==='Enter'){ e.preventDefault(); commitTrailing(); } }
+function urlPaste(e){
+  if(!chipMode()) return;
+  const dt=e.clipboardData||window.clipboardData; if(!dt) return;
+  const t=dt.getData('text')||'';
+  if(/[\n,]/.test(t)){ e.preventDefault(); addChips(t.split(/[\n,]/)); document.getElementById('u_url').value=''; renderChips(); syncUrlBtn(); }
+}
+function effUrls(){ const a=_urlChips.slice(); const t=v('u_url'); if(isUrl(t)&&!a.includes(t)) a.push(t); return a; }
 function urlFormValid(){
   const hasTerm=document.getElementById('u_hasterm').checked;
   const from=hasTerm?v('u_from'):'', to=hasTerm?v('u_to'):'';
   if(hasTerm && !to) return false;
   if(hasTerm && from && to && new Date(from)>new Date(to)) return false;
-  if(_bulk){ const n=bulkValidLines().length; return n>0 && n<=(50-urls.length); }
-  const url=v('u_url'),title=v('u_title'),desc=v('u_desc');
-  if(!/^https?:\/\/.+/.test(url)) return false;
-  if(_urlMode==='link'){
-    if(title.length<1) return false;
-    if(desc.length<1) return false;
+  if(v('u_title').length<1) return false;
+  if(chipMode()){
+    const n=effUrls().length;
+    return n>0 && n<=(50-urls.length);
   }
+  if(!isUrl(v('u_url'))) return false;
+  if(_urlMode==='link' && v('u_desc').length<1) return false;
   return true;
 }
 function syncUrlBtn(){
   const hasTerm=document.getElementById('u_hasterm').checked;
   const from=hasTerm?v('u_from'):'', to=hasTerm?v('u_to'):'';
   if(hasTerm && from && to && new Date(from)>new Date(to)) flag('h_to','시작일이 종료일보다 늦습니다'); else unflag('h_to');
-  if(_bulk){ const n=bulkValidLines().length, room=50-urls.length; if(n>room) flag('h_bulk',`최대 50개까지 등록할 수 있어요. 현재 ${urls.length}개 → ${room}개까지 추가 가능(입력 ${n}개)`); else unflag('h_bulk'); } else unflag('h_bulk');
+  if(chipMode()){ const n=effUrls().length, room=50-urls.length; if(n>room) flag('h_url',`최대 50개까지 등록할 수 있어요. 현재 ${urls.length}개 → ${room}개까지 추가 가능(입력 ${n}개)`); else unflag('h_url'); } else unflag('h_url');
   document.getElementById('urldr-save').disabled=!urlFormValid();
 }
 function toggleTerm(){
@@ -898,30 +914,29 @@ function toggleTerm(){
   }else{ fromEl.value=''; toEl.value=''; unflag('h_to'); }
   syncUrlBtn();
 }
-function closeUrl(){document.getElementById('urlov').classList.remove('show');_uEdit=-1;}
+function closeUrl(){document.getElementById('urlov').classList.remove('show');_uEdit=-1;_urlChips=[];}
 function addUrl(){
+  if(chipMode()) commitTrailing();
   if(!urlFormValid()){ syncUrlBtn(); return; }
   const hasTerm=document.getElementById('u_hasterm').checked;
   const from=hasTerm?v('u_from'):'', to=hasTerm?v('u_to'):'';
   const mode=_urlMode;
-  // 일괄 등록
-  if(_bulk && _uEdit<0){
-    const lines=bulkValidLines();
-    if(lines.length > 50-urls.length){ syncUrlBtn(); return; } // 한도 초과 → 등록 불가(사유는 인라인 안내)
-    lines.forEach(u=>{
-      const o={title:u,url:u,desc:'',mode,from,to,on:true,reg:ymd(TODAY)+' 09:30'};
-      if(mode==='content'){ o.proc='run'; setTimeout(()=>{o.proc='done';renderUrls();},3500); }
+  // 다중 등록 (내용 반영·신규): URL 여러 개 -> 같은 이름·설명으로 한 번에
+  if(chipMode()){
+    const arr=effUrls();
+    if(!arr.length || arr.length > 50-urls.length){ syncUrlBtn(); return; }
+    const title=v('u_title'), desc=v('u_desc');
+    arr.forEach(u=>{
+      const o={title,url:u,desc,mode,from,to,on:true,reg:ymd(TODAY)+' 09:30',proc:'run'};
+      setTimeout(()=>{o.proc='done';renderUrls();},3500);
       urls.unshift(o);
     });
     renderUrls(); closeUrl();
-    let msg=lines.length+'개 웹페이지를 등록했습니다';
-    if(mode==='content') msg+='. 처리 후 반영됩니다';
-    toast(msg);
+    toast((arr.length>1?arr.length+'개 웹페이지를 등록했습니다':'등록했습니다')+'. 처리 후 답변에 반영됩니다');
     return;
   }
   // 단일 등록/수정
-  const url=v('u_url'); let title=v('u_title'); const desc=v('u_desc');
-  if(mode==='content' && !title) title=url; // 이름 미입력 시 URL을 라벨로
+  const url=v('u_url'); const title=v('u_title'); const desc=v('u_desc');
   if(_uEdit<0 && urls.length>=50){toast('웹페이지는 최대 50개까지 등록할 수 있습니다');return;}
   if(_uEdit>=0){
     const o=urls[_uEdit];
