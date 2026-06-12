@@ -417,7 +417,6 @@
           <div class="urladd"><input id="u_url" autocomplete="off" placeholder="URL을 입력하세요" oninput="syncUrlBtn()" onkeydown="urlKey(event)" onpaste="urlPaste(event)" /><button type="button" class="btn" id="u_addbtn" onclick="addFromInput()">＋ 추가</button></div>
           <div class="urllist" id="u_chips"></div>
           <div class="help" id="h_url"></div>
-          <div class="termhint" id="u_multihint" style="display:none">URL을 입력하고 <b>추가</b>를 누르세요. 여러 줄을 붙여넣으면 자동으로 나뉘어 추가됩니다. <b>최대 5개</b>까지, 입력한 페이지는 <b>하나의 문서로 묶여</b> 같은 이름·설명으로 등록됩니다.</div>
         </div>
         <div class="field">
           <label class="lbl-row"><span id="lab_title">이름 <span class="req">*</span></span><span class="cc" id="cc_title">0 / 40</span></label>
@@ -650,7 +649,7 @@ function renderDetail(){
     const term=termText(u);
     const isC=u.mode==='content';
     const urlRow = isC
-      ? `<div><dt>페이지 (${(u.pages||[]).length})</dt><dd>${pagesListHtml(u)}</dd></div>`
+      ? `<div><dt>URL</dt><dd>${pagesListHtml(u)}</dd></div>`
       : `<div><dt>URL</dt><dd><a href="${u.url}" target="_blank">${u.url}</a></dd></div>`;
     document.getElementById('dt-h4').innerHTML=`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.title}</span>`;
     document.getElementById('dt-body').innerHTML=`
@@ -813,9 +812,11 @@ function renderUrls(){
     const i=urls.indexOf(u);
     const s=urlState(u);
     const term=termText(u);
-    const t1=`<div class="t1">${u.title}</div>`;
+    const pv=u.mode==='content'&&u.proc==='done';
+    const t1=pv?`<div class="t1 pvname" onclick="event.stopPropagation();openPreview('url',${i})">${u.title}</div>`:`<div class="t1">${u.title}</div>`;
     let menu='';
     if(!(u.mode==='content' && u.proc==='run')){
+      if(pv) menu+=`<button onclick="closeMenus();openPreview('url',${i})">미리보기</button>`;
       if(s.cat==='on') menu+=`<button onclick="closeMenus();toggleUrlRef(${i})">답변에서 제외</button>`;
       if(s.cat==='off') menu+=`<button onclick="closeMenus();toggleUrlRef(${i})">답변에 반영</button>`;
       if(u.mode==='content' && (u.proc==='fail'||(u.failed&&u.failed.length))) menu+=`<button onclick="closeMenus();retryUrl(${i})">다시 시도</button>`;
@@ -860,7 +861,8 @@ function setUrlMode(m){
   document.getElementById('u_guide').innerHTML = req
     ? 'ⓘ <b>링크 안내</b> — 관련 질문이 들어오면 답변에 이 링크를 함께 안내합니다. 페이지 내용 자체는 답변에 담기지 않습니다. 어떤 질문에 연결할지는 입력한 <b>이름·설명</b>으로 판단하니, 고객이 실제 쓰는 표현으로 적어 주세요.'
     : 'ⓘ <b>내용 반영</b> — 페이지 내용을 가져와 답변에 직접 활용합니다. 각 페이지의 내용만 1회 가져오며(하위 페이지는 따라가지 않음), 페이지가 바뀌어도 자동 업데이트되지 않으니 바뀌면 직접 업데이트해 주세요.';
-  document.getElementById('u_multihint').style.display = (!req)?'block':'none';
+  document.getElementById('u_addbtn').style.display = req?'none':'';
+  document.getElementById('cc_url').style.display = req?'none':'';
   if(req){ _urlChips=[]; renderChips(); }
   onUrlInput();
 }
