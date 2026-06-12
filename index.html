@@ -191,12 +191,18 @@
   .ck-label{font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;color:var(--ink)}
   .ck-ctl{display:flex;align-items:center;gap:10px}
   .termhint{font-size:11.5px;color:var(--ink-3);margin-top:7px;line-height:1.5}
-  .urlchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
-  .urlchips:empty{display:none}
-  .urlchip{display:inline-flex;align-items:center;gap:6px;max-width:100%;background:rgba(138,70,255,.10);color:var(--brand);border:1px solid rgba(138,70,255,.30);border-radius:14px;padding:3px 4px 3px 10px;font-size:12px;line-height:1.5}
-  .urlchip .u{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px}
-  .urlchip button{border:none;background:rgba(138,70,255,.18);color:var(--brand);border-radius:50%;width:16px;height:16px;line-height:1;cursor:pointer;font-size:13px;padding:0;flex:none}
-  .urlchip button:hover{background:rgba(138,70,255,.32)}
+  .urllist{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+  .urllist:empty{display:none}
+  .urlitem{display:flex;align-items:flex-start;gap:8px;background:#f7f8fa;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:12.5px;line-height:1.5}
+  .urlitem .u{flex:1;word-break:break-all;color:var(--ink)}
+  .urlitem button{border:none;background:transparent;color:var(--ink-3);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;flex:none}
+  .urlitem button:hover{color:var(--err)}
+  .badmini{color:var(--err);font-size:11px;margin-left:4px}
+  .pglist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px}
+  .pglist li{display:flex;gap:7px;align-items:flex-start;font-size:12.5px;word-break:break-all}
+  .pglist .pgi{flex:none;color:#16a34a}
+  .pglist li.bad .pgi{color:var(--err)}
+  .pglist li.bad a{color:var(--err)}
   .field label.lbl-row{display:flex;justify-content:space-between;align-items:baseline}
   .field label.switch{display:inline-flex;margin:0;font-weight:400}
   .cc{font-size:11px;color:var(--ink-3);font-weight:500}
@@ -402,11 +408,11 @@
       <!-- 단일 등록 -->
       <div id="u_single">
         <div class="field">
-          <label><span id="lab_url">URL <span class="req">*</span></span></label>
-          <div class="urlchips" id="u_chips"></div>
+          <label class="lbl-row"><span id="lab_url">URL <span class="req">*</span></span><span class="cc" id="cc_url">0 / 5</span></label>
+          <div class="urllist" id="u_chips"></div>
           <input id="u_url" autocomplete="off" placeholder="https://example.com/help/delivery" oninput="onUrlInput()" onkeydown="urlKey(event)" onpaste="urlPaste(event)" onblur="commitTrailing()" />
           <div class="help" id="h_url"></div>
-          <div class="termhint" id="u_multihint" style="display:none">여러 개는 <b>쉼표</b> 또는 <b>Enter</b>로 구분하세요. 입력한 URL은 모두 <b>같은 이름·설명</b>으로 한 번에 등록됩니다.</div>
+          <div class="termhint" id="u_multihint" style="display:none">URL을 <b>쉼표·줄바꿈·Enter</b>로 구분해 <b>최대 5개</b>까지 넣을 수 있어요. 입력한 페이지들은 <b>하나의 문서로 묶여</b> 같은 이름·설명으로 등록됩니다.</div>
         </div>
         <div class="field">
           <label class="lbl-row"><span id="lab_title">이름 <span class="req">*</span></span><span class="cc" id="cc_title">0 / 40</span></label>
@@ -499,10 +505,9 @@ let urls = [
   {title:'6월 신상 기획전', url:'https://ctkclip.com/event/june-new', desc:'6월 신상품 기획전 — 카테고리별 할인율 및 추천 상품', mode:'link', from:'2026-06-01', to:'2026-06-30', on:true, reg:'2026-05-28 15:40'},
   {title:'여름 시즌 오프', url:'https://ctkclip.com/event/summer', desc:'여름 시즌 세일 사전 예고 — 품목별 최대 40% 할인 예정', mode:'link', from:'2026-07-01', to:'2026-07-31', on:true, reg:'2026-06-02 11:05'},
   {title:'가정의 달 세일', url:'https://ctkclip.com/event/may-family', desc:'5월 가정의 달 전 품목 20% 할인 이벤트 안내', mode:'link', from:'2026-05-01', to:'2026-05-31', on:true, reg:'2026-04-25 09:30'},
-  {title:'사이즈·핏 가이드', url:'https://ctkclip.com/help/size-fit', desc:'카테고리별 사이즈 표·실측 방법·핏 추천', mode:'content', proc:'done', from:'', to:'', on:true, reg:'2026-06-08 13:20'},
-  {title:'반품·교환 절차 안내', url:'https://ctkclip.com/help/return-flow', desc:'', mode:'content', proc:'run', from:'', to:'', on:true, reg:'2026-06-11 09:05'},
-  {title:'환불 정책 안내', url:'https://ctkclip.com/help/refund', desc:'', mode:'content', proc:'fail', failKind:'index', from:'', to:'', on:true, reg:'2026-06-10 16:30'},
-  {title:'https://ctkclip.com/event/2025-old', url:'https://ctkclip.com/event/2025-old', desc:'', mode:'content', proc:'fail', failKind:'url', from:'', to:'', on:true, reg:'2026-06-10 16:35'},
+  {title:'사이즈·핏 가이드', desc:'카테고리별 사이즈 표·실측 방법·핏 추천', mode:'content', pages:['https://ctkclip.com/help/size-fit','https://ctkclip.com/help/size-chart'], failed:[], proc:'done', from:'', to:'', on:true, reg:'2026-06-08 13:20'},
+  {title:'반품·교환 안내', desc:'반품·교환 신청 방법과 배송비 안내', mode:'content', pages:['https://ctkclip.com/help/return-flow','https://ctkclip.com/help/exchange'], failed:[], proc:'run', from:'', to:'', on:true, reg:'2026-06-11 09:05'},
+  {title:'배송 안내 모음', desc:'배송비·배송 기간·도서산간 추가 배송비 안내', mode:'content', pages:['https://ctkclip.com/help/delivery','https://ctkclip.com/help/delivery-area','https://ctkclip.com/event/2025-old'], failed:['https://ctkclip.com/event/2025-old'], proc:'done', from:'', to:'', on:true, reg:'2026-06-10 16:30'},
 ];
 
 const ICON={pdf:'PDF',txt:'TXT',xls:'XLS',md:'MD'};
@@ -638,20 +643,27 @@ function renderDetail(){
   } else if(_d.k==='url'){
     const u=urls[_d.i]; if(!u)return;
     const term=termText(u);
+    const isC=u.mode==='content';
+    const urlRow = isC
+      ? `<div><dt>페이지 (${(u.pages||[]).length})</dt><dd>${pagesListHtml(u)}</dd></div>`
+      : `<div><dt>URL</dt><dd><a href="${u.url}" target="_blank">${u.url}</a></dd></div>`;
     document.getElementById('dt-h4').innerHTML=`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.title}</span>`;
     document.getElementById('dt-body').innerHTML=`
       <div class="dt-list">
         <div><dt>등록 유형</dt><dd>${modeBadge(u)}</dd></div>
-        <div><dt>URL</dt><dd><a href="${u.url}" target="_blank">${u.url}</a></dd></div>
+        ${urlRow}
         <div><dt>설명</dt><dd>${u.desc||'—'}</dd></div>
         <div><dt>유효기간</dt><dd>${term}</dd></div>
         <div><dt>등록 일시</dt><dd>${u.reg||'—'}</dd></div>
         <div><dt>상태 ${(urlState(u).cat==='on'||urlState(u).cat==='off')?URLTIP:''}</dt><dd>${statCellUrl(u,_d.i)}</dd></div>
       </div>
-      ${u.mode==='content'?(u.proc==='fail'?`<div class="dt-err">${urlFailMsg(u)}</div>`:`<div class="dr-note">ⓘ 페이지 내용을 가져와 답변에 직접 활용합니다. 입력한 페이지 하나만 가져오며, 페이지가 바뀌어도 자동으로 업데이트되지 않으니, 바뀌면 직접 업데이트해 주세요.</div>`):''}`;
+      ${isC?urlNote(u):''}`;
     let foot='';
-    if(u.mode==='content' && u.proc==='fail') foot+=`<button class="btn" onclick="closeDetail();retryUrl(${_d.i})">다시 시도</button>`;
-    else if(u.mode==='content') foot+=`<button class="btn" onclick="closeDetail();recollect(${_d.i})">내용 업데이트</button>`;
+    if(isC && u.proc==='done'){ foot+=`<button class="btn" onclick="closeDetail();openPreview('url',${_d.i})">미리보기</button>`; foot+=`<button class="btn" onclick="toast('다운로드 (프로토타입)')">다운로드</button>`; }
+    if(isC && u.proc!=='run'){
+      if(u.proc==='fail' || (u.failed&&u.failed.length)) foot+=`<button class="btn" onclick="closeDetail();retryUrl(${_d.i})">실패한 페이지 다시 시도</button>`;
+      else foot+=`<button class="btn" onclick="closeDetail();recollect(${_d.i})">내용 업데이트</button>`;
+    }
     foot+=`<button class="btn" onclick="openUrl(${_d.i})">수정</button>`;
     setFoot(foot);
   }
@@ -729,6 +741,27 @@ function delFile(i){confirmModal('문서 삭제','“'+files[i].name+'”을(를
 function setUFilter(f){uFilter=f;uPage=1;closeHF();setHF('uHF',f);renderUrls();}
 function setModeFilter(m){uMode=m;uPage=1;closeHF();setHF('mHF',m);renderUrls();}
 function modeBadge(u){return `<span class="mode ${u.mode}">${u.mode==='content'?'내용 반영':'링크 안내'}</span>`;}
+const MAXSET=5;
+function uPrimaryUrl(u){ return u.mode==='content' ? ((u.pages&&u.pages[0])||'') : (u.url||''); }
+function uUrlCell(u){
+  if(u.mode!=='content') return u.url||'';
+  const n=(u.pages||[]).length, bad=(u.failed||[]).length;
+  let str = n>1 ? (uPrimaryUrl(u)+' <span class="muted">외 '+(n-1)+'개</span>') : uPrimaryUrl(u);
+  if(bad) str += ' <span class="badmini">⚠ '+bad+'개 수집 실패</span>';
+  return str;
+}
+function pagesListHtml(u){
+  const failed=u.failed||[];
+  return '<ul class="pglist">'+(u.pages||[]).map(pp=>{
+    const bad=failed.includes(pp);
+    return `<li class="${bad?'bad':''}"><span class="pgi">${bad?'✗':'✓'}</span><a href="${pp}" target="_blank">${pp}</a></li>`;
+  }).join('')+'</ul>';
+}
+function urlNote(u){
+  if(u.proc==='fail') return `<div class="dt-err">${urlFailMsg(u)}</div>`;
+  if((u.failed||[]).length) return '<div class="dt-err">일부 페이지를 가져오지 못했습니다(위 목록의 ✗). 유효한 URL인지 확인 후 다시 시도해 주세요.</div>';
+  return '<div class="dr-note">ⓘ 페이지 내용을 가져와 답변에 직접 활용합니다. 각 페이지의 내용만 1회 가져오며(하위 페이지는 따라가지 않음), 페이지가 바뀌면 직접 업데이트해 주세요.</div>';
+}
 function urlState(u){
   if(u.mode==='content' && u.proc==='fail') return {cls:'err',cat:'err',label:'실패'};
   if(u.mode==='content' && u.proc==='run') return {cls:'run',cat:'run',label:'처리 중'};
@@ -747,12 +780,12 @@ function termText(u){
 function toggleUrlRef(i){urls[i].on=(urls[i].on===false);renderUrls();if(_d.k==='url'&&_d.i===i)renderDetail();toast(urls[i].on!==false?'답변에 반영됩니다':'답변에서 제외했습니다');}
 function recollect(i){
   const u=urls[i]; u.proc='run'; renderUrls(); if(_d.k==='url'&&_d.i===i)renderDetail(); toast('내용을 업데이트하고 있습니다');
-  setTimeout(()=>{u.proc='done';renderUrls();if(_d.k==='url'&&_d.i===i)renderDetail();toast('내용을 업데이트했습니다');},3000);
+  setTimeout(()=>{u.proc='done'; u.failed=[]; renderUrls();if(_d.k==='url'&&_d.i===i)renderDetail();toast('내용을 업데이트했습니다');},3000);
 }
 function urlFailMsg(u){ return '웹페이지를 처리하지 못했습니다. 잠시 후 다시 시도해 주세요. 계속 실패하면 URL을 확인해 주세요.'; }
 function retryUrl(i){
   const u=urls[i]; u.proc='run'; renderUrls(); if(_d.k==='url'&&_d.i===i)renderDetail(); toast('다시 처리하고 있습니다');
-  setTimeout(()=>{u.proc='done'; delete u.failKind; renderUrls(); if(_d.k==='url'&&_d.i===i)renderDetail(); toast('처리해 답변에 반영됐습니다');},3000);
+  setTimeout(()=>{u.proc='done'; u.failed=[]; renderUrls(); if(_d.k==='url'&&_d.i===i)renderDetail(); toast('처리해 답변에 반영됐습니다');},3000);
 }
 function uListFiltered(){
   const q=document.getElementById('fsearch').value.trim().toLowerCase();
@@ -760,7 +793,7 @@ function uListFiltered(){
     if(uMode!=='all' && u.mode!==uMode) return false;
     const s=urlState(u);
     if(uFilter!=='all' && s.cat!==uFilter) return false;
-    if(q && !(u.title.toLowerCase().includes(q)||(u.desc||'').toLowerCase().includes(q)||(u.url||'').toLowerCase().includes(q))) return false;
+    if(q && !(u.title.toLowerCase().includes(q)||(u.desc||'').toLowerCase().includes(q)||(uPrimaryUrl(u)+' '+(u.pages||[]).join(' ')).toLowerCase().includes(q))) return false;
     return true;
   });
 }
@@ -788,7 +821,7 @@ function renderUrls(){
     const acts=`<div class="menu"><button class="mb" onclick="toggleMenu(event,this)">⋮</button><div class="menu-pop">${menu}</div></div>`;
     const tr=document.createElement('tr');
     tr.onclick=()=>openUrlDetail(i);
-    tr.innerHTML=`<td><div class="ttl-cell">${t1}<div class="t2 url">${u.url}</div></div></td>
+    tr.innerHTML=`<td><div class="ttl-cell">${t1}<div class="t2 url">${uUrlCell(u)}</div></div></td>
       <td>${modeBadge(u)}</td>
       <td>${badge(s.cls,s.label)}</td>
       <td class="muted" style="white-space:nowrap">${term}</td>
@@ -822,16 +855,18 @@ function setUrlMode(m){
   document.getElementById('u_guide').innerHTML = req
     ? 'ⓘ <b>링크 안내</b> — 관련 질문이 들어오면 답변에 이 링크를 함께 안내합니다. 페이지 내용 자체는 답변에 담기지 않습니다. 어떤 질문에 연결할지는 입력한 <b>이름·설명</b>으로 판단하니, 고객이 실제 쓰는 표현으로 적어 주세요.'
     : 'ⓘ <b>내용 반영</b> — 페이지 내용을 가져와 답변에 직접 활용합니다. 각 페이지의 내용만 1회 가져오며(하위 페이지는 따라가지 않음), 페이지가 바뀌어도 자동 업데이트되지 않으니 바뀌면 직접 업데이트해 주세요.';
-  document.getElementById('u_multihint').style.display = (!req && _uEdit<0)?'block':'none';
+  document.getElementById('u_multihint').style.display = (!req)?'block':'none';
   if(req){ _urlChips=[]; renderChips(); }
   onUrlInput();
 }
 function openUrl(i){
   const edit=(typeof i==='number'); _uEdit=edit?i:-1;
-  _urlChips=[]; renderChips();
-  const u=edit?urls[i]:{url:'',title:'',desc:'',from:'',to:'',mode:'link'};
+  _urlChips=[];
+  const u=edit?urls[i]:{title:'',desc:'',from:'',to:'',mode:'link'};
   setUrlMode(u.mode||'link');
-  document.getElementById('u_url').value=u.url||'';
+  if((u.mode||'link')==='content') _urlChips=(u.pages?u.pages.slice():[]);
+  renderChips();
+  document.getElementById('u_url').value=(u.mode==='content')?'':(u.url||'');
   document.getElementById('u_title').value=u.title||'';
   document.getElementById('u_desc').value=u.desc||'';
   document.getElementById('u_from').value=u.from||''; document.getElementById('u_to').value=u.to||'';
@@ -860,12 +895,17 @@ function onUrlInput(){
   }
   syncUrlBtn();
 }
-function chipMode(){ return _urlMode==='content' && _uEdit<0; }
+function chipMode(){ return _urlMode==='content'; }
 function isUrl(s){ return /^https?:\/\/\S+/.test((s||'').trim()); }
-function addChips(arr){ arr.map(s=>s.trim()).filter(isUrl).forEach(u=>{ if(!_urlChips.includes(u)) _urlChips.push(u); }); }
+function addChips(arr){
+  let dropped=0;
+  arr.map(s=>s.trim()).filter(isUrl).forEach(u=>{ if(_urlChips.includes(u))return; if(_urlChips.length<MAXSET)_urlChips.push(u); else dropped++; });
+  if(dropped) toast('세트당 최대 '+MAXSET+'개까지 넣을 수 있어요');
+}
 function renderChips(){
   const box=document.getElementById('u_chips'); if(!box) return;
-  box.innerHTML=_urlChips.map((u,idx)=>`<span class="urlchip"><span class="u" title="${u}">${u}</span><button type="button" onclick="rmChip(${idx})">×</button></span>`).join('');
+  box.innerHTML=_urlChips.map((u,idx)=>`<div class="urlitem"><span class="u">${u}</span><button type="button" title="삭제" onclick="rmChip(${idx})">×</button></div>`).join('');
+  const cc=document.getElementById('cc_url'); if(cc) cc.textContent=_urlChips.length+' / '+MAXSET;
 }
 function rmChip(i){ _urlChips.splice(i,1); renderChips(); syncUrlBtn(); }
 function commitTrailing(){
@@ -890,7 +930,9 @@ function urlFormValid(){
   if(v('u_title').length<1) return false;
   if(chipMode()){
     const n=effUrls().length;
-    return n>0 && n<=(50-urls.length);
+    if(n<1 || n>MAXSET) return false;
+    if(_uEdit<0 && urls.length>=50) return false;
+    return true;
   }
   if(!isUrl(v('u_url'))) return false;
   if(_urlMode==='link' && v('u_desc').length<1) return false;
@@ -900,7 +942,7 @@ function syncUrlBtn(){
   const hasTerm=document.getElementById('u_hasterm').checked;
   const from=hasTerm?v('u_from'):'', to=hasTerm?v('u_to'):'';
   if(hasTerm && from && to && new Date(from)>new Date(to)) flag('h_to','시작일이 종료일보다 늦습니다'); else unflag('h_to');
-  if(chipMode()){ const n=effUrls().length, room=50-urls.length; if(n>room) flag('h_url',`최대 50개까지 등록할 수 있어요. 현재 ${urls.length}개 → ${room}개까지 추가 가능(입력 ${n}개)`); else unflag('h_url'); } else unflag('h_url');
+  if(chipMode() && _uEdit<0 && urls.length>=50) flag('h_url','웹페이지는 최대 50개까지 등록할 수 있어요'); else unflag('h_url');
   document.getElementById('urldr-save').disabled=!urlFormValid();
 }
 function toggleTerm(){
@@ -916,41 +958,45 @@ function toggleTerm(){
 }
 function closeUrl(){document.getElementById('urlov').classList.remove('show');_uEdit=-1;_urlChips=[];}
 function addUrl(){
-  if(chipMode()) commitTrailing();
+  if(_urlMode==='content') commitTrailing();
   if(!urlFormValid()){ syncUrlBtn(); return; }
   const hasTerm=document.getElementById('u_hasterm').checked;
   const from=hasTerm?v('u_from'):'', to=hasTerm?v('u_to'):'';
-  const mode=_urlMode;
-  // 다중 등록 (내용 반영·신규): URL 여러 개 -> 같은 이름·설명으로 한 번에
-  if(chipMode()){
+  // 내용 반영 = 세트(여러 URL -> 하나의 문서). 신규/수정 공통.
+  if(_urlMode==='content'){
     const arr=effUrls();
-    if(!arr.length || arr.length > 50-urls.length){ syncUrlBtn(); return; }
+    if(!arr.length || arr.length>MAXSET){ syncUrlBtn(); return; }
     const title=v('u_title'), desc=v('u_desc');
-    arr.forEach(u=>{
-      const o={title,url:u,desc,mode,from,to,on:true,reg:ymd(TODAY)+' 09:30',proc:'run'};
-      setTimeout(()=>{o.proc='done';renderUrls();},3500);
-      urls.unshift(o);
-    });
+    if(_uEdit>=0){
+      const o=urls[_uEdit];
+      const changed=JSON.stringify(o.pages||[])!==JSON.stringify(arr);
+      Object.assign(o,{title,desc,mode:'content',pages:arr.slice(),from,to}); delete o.url;
+      if(changed){ o.proc='run'; o.failed=[]; setTimeout(()=>{o.proc='done';renderUrls();if(_d.k==='url'&&urls[_d.i]===o)renderDetail();toast('내용을 업데이트했습니다');},3000); }
+      renderUrls(); closeUrl(); if(_d.k==='url')renderDetail();
+      toast(changed?'수정했습니다. 처리 후 반영됩니다':'수정했습니다');
+      return;
+    }
+    if(urls.length>=50){ toast('웹페이지는 최대 50개까지 등록할 수 있습니다'); return; }
+    const o={title,desc,mode:'content',pages:arr.slice(),failed:[],proc:'run',from,to,on:true,reg:ymd(TODAY)+' 09:30'};
+    urls.unshift(o);
+    setTimeout(()=>{o.proc='done';renderUrls();if(_d.k==='url'&&urls[_d.i]===o)renderDetail();},3500);
     renderUrls(); closeUrl();
-    toast((arr.length>1?arr.length+'개 웹페이지를 등록했습니다':'등록했습니다')+'. 처리 후 답변에 반영됩니다');
+    toast((arr.length>1?arr.length+'개 페이지를 한 세트로 등록했습니다':'등록했습니다')+'. 처리 후 답변에 반영됩니다');
     return;
   }
-  // 단일 등록/수정
+  // 링크 안내 = 단건
   const url=v('u_url'); const title=v('u_title'); const desc=v('u_desc');
-  if(_uEdit<0 && urls.length>=50){toast('웹페이지는 최대 50개까지 등록할 수 있습니다');return;}
+  if(_uEdit<0 && urls.length>=50){ toast('웹페이지는 최대 50개까지 등록할 수 있습니다'); return; }
   if(_uEdit>=0){
     const o=urls[_uEdit];
-    Object.assign(o,{title,url,desc,mode,from,to});
-    if(mode==='content'){ o.proc='run'; setTimeout(()=>{o.proc='done';renderUrls();if(_d.k==='url'&&urls[_d.i]===o)renderDetail();toast('내용을 업데이트했습니다');},3000); }
-    else { delete o.proc; }
+    Object.assign(o,{title,url,desc,mode:'link',from,to}); delete o.proc; delete o.pages; delete o.failed;
     renderUrls(); closeUrl(); if(_d.k==='url')renderDetail();
-    toast(mode==='content'?'수정했습니다. 처리 후 반영됩니다':'수정했습니다');
+    toast('수정했습니다');
   }else{
-    const o={title,url,desc,mode,from,to,on:true,reg:ymd(TODAY)+' 09:30'};
-    if(mode==='content'){ o.proc='run'; setTimeout(()=>{o.proc='done';renderUrls();if(_d.k==='url'&&urls[_d.i]===o)renderDetail();toast('“'+title+'” 내용을 반영했습니다');},3500); }
+    const o={title,url,desc,mode:'link',from,to,on:true,reg:ymd(TODAY)+' 09:30'};
     urls.unshift(o);
     renderUrls(); closeUrl();
-    toast(mode==='content'?'등록했습니다. 처리 후 답변에 반영됩니다':'등록했습니다');
+    toast('등록했습니다');
   }
 }
 function delUrl(i){confirmModal('웹페이지 삭제','“'+urls[i].title+'”을(를) 삭제하시겠습니까? 복구할 수 없습니다.',()=>{urls.splice(i,1);closeDetail();renderUrls();toast('삭제했습니다');},'삭제');}
@@ -972,14 +1018,19 @@ function closePreview(){document.getElementById('pvov').classList.remove('show')
 function openPreview(kind,i){
   let title,sub,body;
   if(kind==='file'){ const f=files[i]; title=f.name; sub='형식 '+f.type.toUpperCase()+' · '+f.size; body=mockDocText(f.name); }
-  else { const u=urls[i]; title=u.title; sub=u.url; body=mockUrlText(u); }
+  else { const u=urls[i]; title=u.title; sub=(u.pages?(u.pages.length+'개 페이지 · 합본 PDF'):(u.url||'')); body=mockUrlText(u); }
   document.getElementById('pv-title').textContent=title;
   document.getElementById('pv-sub').textContent=sub;
   document.getElementById('pv-body').textContent=body;
   document.getElementById('pvov').classList.add('show');
 }
 function mockDocText(name){return '(프로토타입 예시 — 실제로는 업로드한 문서의 본문 텍스트가 그대로 표시됩니다.)\n\n배송은 결제 완료 후 평균 2~3영업일 이내 출고되며, 도서·산간 지역은 1~2일이 더 걸릴 수 있습니다. 5만 원 이상 구매 시 무료배송이 적용되고, 그 미만은 배송비 3,000원이 부과됩니다.\n\n교환·환불은 상품을 받은 날부터 7일 이내에 신청할 수 있습니다. 단순 변심은 왕복 배송비가 부과되며, 상품 불량·오배송은 무료로 처리됩니다.\n\n회원 등급별 적립률, 쿠폰 사용 조건, 정기구독 해지 방법도 함께 정리되어 있습니다.';}
-function mockUrlText(u){return '수집 원본: '+u.url+'\n수집 일시: '+(u.reg||'-')+'\n\n(프로토타입 예시 — 실제로는 페이지에서 추출한 본문 텍스트가 그대로 표시됩니다.)\n\n사이즈는 실측 기준으로 안내되며, 같은 호수라도 제품·핏에 따라 차이가 있을 수 있습니다. 상의는 어깨너비·가슴단면·총장, 하의는 허리단면·밑위·총장을 참고해 주세요.\n\n평소 사이즈와 1~2cm 정도 오차가 있을 수 있으니 구매 전 상세 페이지의 치수표를 확인해 주세요. 사이즈 교환은 상품을 받은 날부터 7일 이내에 신청할 수 있습니다.';}
+function mockUrlText(u){
+  const pages=(u.pages&&u.pages.length)?u.pages:[u.url];
+  const ok=pages.filter(pp=>!((u.failed||[]).includes(pp)));
+  const head='[수집 문서 미리보기 · PDF · 이미지 포함]\n합본 페이지 '+ok.length+'개\n'+ok.map(pp=>'· '+pp).join('\n');
+  return head+'\n\n(프로토타입 예시 — 실제로는 각 페이지를 가져와 이미지까지 담은 PDF가 표시됩니다. 아래는 추출 텍스트 예시입니다.)\n\n사이즈는 실측 기준으로 안내되며, 같은 호수라도 제품·핏에 따라 차이가 있을 수 있습니다. 상의는 어깨너비·가슴단면·총장, 하의는 허리단면·밑위·총장을 참고해 주세요.\n\n평소 사이즈와 1~2cm 정도 오차가 있을 수 있으니 구매 전 상세 페이지의 치수표를 확인해 주세요. 사이즈 교환은 상품을 받은 날부터 7일 이내에 신청할 수 있습니다.';
+}
 let _tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2600);}
 
 const dz=document.getElementById('mdrop');
