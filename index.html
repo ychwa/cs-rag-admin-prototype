@@ -197,6 +197,11 @@
   .urlitem .u{flex:1;word-break:break-all;color:var(--ink)}
   .urlitem button{border:none;background:transparent;color:var(--ink-3);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;flex:none}
   .urlitem button:hover{color:var(--err)}
+  .urlitem.bad{border-color:var(--err);background:#fdf3f3}
+  .urlitem.bad .u{color:var(--err)}
+  .urlitem .warn{flex:none;color:var(--err);font-size:13px;cursor:default}
+  .urladd{display:flex;gap:8px}
+  .urladd input{flex:1}
   .badmini{color:var(--err);font-size:11px;margin-left:4px}
   .pglist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px}
   .pglist li{display:flex;gap:7px;align-items:flex-start;font-size:12.5px;word-break:break-all}
@@ -409,10 +414,10 @@
       <div id="u_single">
         <div class="field">
           <label class="lbl-row"><span id="lab_url">URL <span class="req">*</span></span><span class="cc" id="cc_url">0 / 5</span></label>
+          <div class="urladd"><input id="u_url" autocomplete="off" placeholder="URL을 입력하세요" oninput="syncUrlBtn()" onkeydown="urlKey(event)" onpaste="urlPaste(event)" /><button type="button" class="btn" id="u_addbtn" onclick="addFromInput()">＋ 추가</button></div>
           <div class="urllist" id="u_chips"></div>
-          <input id="u_url" autocomplete="off" placeholder="https://example.com/help/delivery" oninput="onUrlInput()" onkeydown="urlKey(event)" onpaste="urlPaste(event)" onblur="commitTrailing()" />
           <div class="help" id="h_url"></div>
-          <div class="termhint" id="u_multihint" style="display:none">URL을 <b>쉼표·줄바꿈·Enter</b>로 구분해 <b>최대 5개</b>까지 넣을 수 있어요. 입력한 페이지들은 <b>하나의 문서로 묶여</b> 같은 이름·설명으로 등록됩니다.</div>
+          <div class="termhint" id="u_multihint" style="display:none">URL을 입력하고 <b>추가</b>를 누르세요. 여러 줄을 붙여넣으면 자동으로 나뉘어 추가됩니다. <b>최대 5개</b>까지, 입력한 페이지는 <b>하나의 문서로 묶여</b> 같은 이름·설명으로 등록됩니다.</div>
         </div>
         <div class="field">
           <label class="lbl-row"><span id="lab_title">이름 <span class="req">*</span></span><span class="cc" id="cc_title">0 / 40</span></label>
@@ -659,12 +664,11 @@ function renderDetail(){
       </div>
       ${isC?urlNote(u):''}`;
     let foot='';
-    if(isC && u.proc==='done'){ foot+=`<button class="btn" onclick="closeDetail();openPreview('url',${_d.i})">미리보기</button>`; foot+=`<button class="btn" onclick="toast('다운로드 (프로토타입)')">다운로드</button>`; }
     if(isC && u.proc!=='run'){
-      if(u.proc==='fail' || (u.failed&&u.failed.length)) foot+=`<button class="btn" onclick="closeDetail();retryUrl(${_d.i})">실패한 페이지 다시 시도</button>`;
+      if(u.proc==='fail' || (u.failed&&u.failed.length)) foot+=`<button class="btn" onclick="closeDetail();retryUrl(${_d.i})">다시 시도</button>`;
       else foot+=`<button class="btn" onclick="closeDetail();recollect(${_d.i})">내용 업데이트</button>`;
     }
-    foot+=`<button class="btn" onclick="openUrl(${_d.i})">수정</button>`;
+    if(!(isC && u.proc==='run')) foot+=`<button class="btn" onclick="openUrl(${_d.i})">수정</button>`;
     setFoot(foot);
   }
 }
@@ -809,15 +813,16 @@ function renderUrls(){
     const i=urls.indexOf(u);
     const s=urlState(u);
     const term=termText(u);
-    const pv=u.mode==='content'&&u.proc==='done';
-    const t1=pv?`<div class="t1 pvname" onclick="event.stopPropagation();openPreview('url',${i})">${u.title}</div>`:`<div class="t1">${u.title}</div>`;
+    const t1=`<div class="t1">${u.title}</div>`;
     let menu='';
-    if(pv) menu+=`<button onclick="closeMenus();openPreview('url',${i})">미리보기</button>`;
-    if(s.cat==='on') menu+=`<button onclick="closeMenus();toggleUrlRef(${i})">답변에서 제외</button>`;
-    if(s.cat==='off') menu+=`<button onclick="closeMenus();toggleUrlRef(${i})">답변에 반영</button>`;
-    if(u.mode==='content' && u.proc==='fail') menu+=`<button onclick="closeMenus();retryUrl(${i})">다시 시도</button>`;
-    else if(u.mode==='content') menu+=`<button onclick="closeMenus();recollect(${i})">내용 업데이트</button>`;
-    menu+=`<button onclick="closeMenus();openUrl(${i})">수정</button><button class="danger" onclick="closeMenus();delUrl(${i})">삭제</button>`;
+    if(!(u.mode==='content' && u.proc==='run')){
+      if(s.cat==='on') menu+=`<button onclick="closeMenus();toggleUrlRef(${i})">답변에서 제외</button>`;
+      if(s.cat==='off') menu+=`<button onclick="closeMenus();toggleUrlRef(${i})">답변에 반영</button>`;
+      if(u.mode==='content' && (u.proc==='fail'||(u.failed&&u.failed.length))) menu+=`<button onclick="closeMenus();retryUrl(${i})">다시 시도</button>`;
+      else if(u.mode==='content') menu+=`<button onclick="closeMenus();recollect(${i})">내용 업데이트</button>`;
+      menu+=`<button onclick="closeMenus();openUrl(${i})">수정</button>`;
+    }
+    menu+=`<button class="danger" onclick="closeMenus();delUrl(${i})">삭제</button>`;
     const acts=`<div class="menu"><button class="mb" onclick="toggleMenu(event,this)">⋮</button><div class="menu-pop">${menu}</div></div>`;
     const tr=document.createElement('tr');
     tr.onclick=()=>openUrlDetail(i);
@@ -883,45 +888,40 @@ function openUrl(i){
 function onUrlInput(){
   document.getElementById('cc_title').textContent=document.getElementById('u_title').value.length+' / 40';
   document.getElementById('cc_desc').textContent=document.getElementById('u_desc').value.length+' / 200';
-  if(chipMode()){
-    const el=document.getElementById('u_url');
-    if(/[\n,]/.test(el.value)){
-      const parts=el.value.split(/[\n,]/);
-      const trailing=parts.pop();
-      addChips(parts);
-      el.value=trailing;
-      renderChips();
-    }
-  }
   syncUrlBtn();
 }
 function chipMode(){ return _urlMode==='content'; }
 function isUrl(s){ return /^https?:\/\/\S+/.test((s||'').trim()); }
-function addChips(arr){
+function addMany(arr){
   let dropped=0;
-  arr.map(s=>s.trim()).filter(isUrl).forEach(u=>{ if(_urlChips.includes(u))return; if(_urlChips.length<MAXSET)_urlChips.push(u); else dropped++; });
+  arr.map(s=>s.trim()).filter(Boolean).forEach(pp=>{ if(_urlChips.includes(pp))return; if(_urlChips.length<MAXSET)_urlChips.push(pp); else dropped++; });
   if(dropped) toast('세트당 최대 '+MAXSET+'개까지 넣을 수 있어요');
+}
+function addFromInput(){
+  const el=document.getElementById('u_url');
+  const parts=el.value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);
+  if(!parts.length) return;
+  addMany(parts); el.value=''; renderChips(); syncUrlBtn();
 }
 function renderChips(){
   const box=document.getElementById('u_chips'); if(!box) return;
-  box.innerHTML=_urlChips.map((u,idx)=>`<div class="urlitem"><span class="u">${u}</span><button type="button" title="삭제" onclick="rmChip(${idx})">×</button></div>`).join('');
-  const cc=document.getElementById('cc_url'); if(cc) cc.textContent=_urlChips.length+' / '+MAXSET;
+  box.innerHTML=_urlChips.map((u,idx)=>{
+    const bad=!isUrl(u);
+    return `<div class="urlitem${bad?' bad':''}"><span class="u">${u}</span>${bad?'<span class="warn" title="URL 형식이 올바르지 않습니다">ⓘ</span>':''}<button type="button" title="삭제" onclick="rmChip(${idx})">×</button></div>`;
+  }).join('');
+  const bad=_urlChips.filter(x=>!isUrl(x)).length;
+  const cc=document.getElementById('cc_url'); if(cc) cc.textContent=_urlChips.length+' / '+MAXSET+(bad?' · '+bad+'건 형식 오류':'');
 }
 function rmChip(i){ _urlChips.splice(i,1); renderChips(); syncUrlBtn(); }
-function commitTrailing(){
-  if(!chipMode()) return;
-  const el=document.getElementById('u_url');
-  if(el.value.trim()){ addChips([el.value]); el.value=''; renderChips(); }
-  syncUrlBtn();
-}
-function urlKey(e){ if(chipMode() && e.key==='Enter'){ e.preventDefault(); commitTrailing(); } }
+function commitTrailing(){ addFromInput(); }
+function urlKey(e){ if(chipMode() && e.key==='Enter'){ e.preventDefault(); addFromInput(); } }
 function urlPaste(e){
   if(!chipMode()) return;
   const dt=e.clipboardData||window.clipboardData; if(!dt) return;
   const t=dt.getData('text')||'';
-  if(/[\n,]/.test(t)){ e.preventDefault(); addChips(t.split(/[\n,]/)); document.getElementById('u_url').value=''; renderChips(); syncUrlBtn(); }
+  if(/[\n,]/.test(t)){ e.preventDefault(); addMany(t.split(/[\n,]+/)); document.getElementById('u_url').value=''; renderChips(); syncUrlBtn(); }
 }
-function effUrls(){ const a=_urlChips.slice(); const t=v('u_url'); if(isUrl(t)&&!a.includes(t)) a.push(t); return a; }
+function effUrls(){ return _urlChips.filter(isUrl); }
 function urlFormValid(){
   const hasTerm=document.getElementById('u_hasterm').checked;
   const from=hasTerm?v('u_from'):'', to=hasTerm?v('u_to'):'';
@@ -929,8 +929,9 @@ function urlFormValid(){
   if(hasTerm && from && to && new Date(from)>new Date(to)) return false;
   if(v('u_title').length<1) return false;
   if(chipMode()){
-    const n=effUrls().length;
+    const n=_urlChips.length;
     if(n<1 || n>MAXSET) return false;
+    if(_urlChips.some(x=>!isUrl(x))) return false;
     if(_uEdit<0 && urls.length>=50) return false;
     return true;
   }
@@ -942,6 +943,8 @@ function syncUrlBtn(){
   const hasTerm=document.getElementById('u_hasterm').checked;
   const from=hasTerm?v('u_from'):'', to=hasTerm?v('u_to'):'';
   if(hasTerm && from && to && new Date(from)>new Date(to)) flag('h_to','시작일이 종료일보다 늦습니다'); else unflag('h_to');
+  const addbtn=document.getElementById('u_addbtn');
+  if(addbtn){ const el=document.getElementById('u_url'); addbtn.disabled = !el.value.trim() || _urlChips.length>=MAXSET; }
   if(chipMode() && _uEdit<0 && urls.length>=50) flag('h_url','웹페이지는 최대 50개까지 등록할 수 있어요'); else unflag('h_url');
   document.getElementById('urldr-save').disabled=!urlFormValid();
 }
@@ -958,7 +961,7 @@ function toggleTerm(){
 }
 function closeUrl(){document.getElementById('urlov').classList.remove('show');_uEdit=-1;_urlChips=[];}
 function addUrl(){
-  if(_urlMode==='content') commitTrailing();
+  if(_urlMode==='content') addFromInput();
   if(!urlFormValid()){ syncUrlBtn(); return; }
   const hasTerm=document.getElementById('u_hasterm').checked;
   const from=hasTerm?v('u_from'):'', to=hasTerm?v('u_to'):'';
